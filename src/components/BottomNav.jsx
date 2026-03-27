@@ -14,7 +14,7 @@ const NavItem = ({ to, icon, label, path }) => {
       <div className={`relative flex items-center justify-center w-14 h-8 rounded-full transition-all duration-300 ${
         isActive ? 'bg-primary-container' : 'hover:bg-on-surface/5'
       }`}>
-        <span className={`material-symbols-rounded text-[24px] ${isActive ? 'variable-ops-bold' : ''}`}>
+        <span className={`material-symbols-outlined text-[24px] ${isActive ? 'variable-ops-bold' : ''}`}>
           {icon}
         </span>
       </div>
