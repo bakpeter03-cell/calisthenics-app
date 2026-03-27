@@ -199,11 +199,13 @@ export default function AddWorkout() {
           </div>
           
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Weight (kg)" type="number" value={weight} onChange={e => setWeight(e.target.value)} onKeyDown={handleKeyDown} placeholder="BW" />
+            <Input label="Weight (kg)" type="number" inputMode="numeric" pattern="[0-9]*" value={weight} onChange={e => setWeight(e.target.value)} onKeyDown={handleKeyDown} placeholder="BW" />
             {!['L-sit', 'Handstand', 'Front Lever'].includes(exercise) && (
               <Input 
                 label="Reps" 
                 type="number" 
+                inputMode="numeric"
+                pattern="[0-9]*" 
                 value={reps} 
                 onChange={e => setReps(e.target.value)} 
                 onKeyDown={handleKeyDown} 
@@ -218,6 +220,8 @@ export default function AddWorkout() {
             <Input 
               label="Rest (sec)" 
               type="number" 
+              inputMode="numeric"
+              pattern="[0-9]*" 
               value={rest} 
               onChange={e => setRest(e.target.value)} 
               onKeyDown={handleKeyDown} 
@@ -228,6 +232,8 @@ export default function AddWorkout() {
             <Input 
               label="Hold (sec)" 
               type="number" 
+              inputMode="numeric"
+              pattern="[0-9]*" 
               value={hold} 
               onChange={e => setHold(e.target.value)} 
               onKeyDown={handleKeyDown} 

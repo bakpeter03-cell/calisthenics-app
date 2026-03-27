@@ -17,7 +17,7 @@ export function Input({ label, error, className = "", containerClassName = "", o
           </button>
         )}
         <input
-          className={`w-full bg-surface-container-low border-0 border-l-2 border-transparent focus:border-secondary rounded-xl py-3 focus:ring-0 text-on-surface font-black transition-all ${onDecrement ? 'text-center px-12' : 'px-4'} ${error ? "border-error text-error" : ""} ${className}`}
+          className={`w-full bg-surface-container-low border-0 border-l-2 border-transparent focus:border-primary rounded-xl py-3 focus:ring-0 text-on-surface font-black ${onDecrement ? 'text-center px-12' : 'px-4'} ${error ? "border-error text-error" : ""} ${className}`}
           {...props}
         />
         {onIncrement && (
