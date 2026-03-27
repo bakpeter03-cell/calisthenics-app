@@ -11,13 +11,15 @@ app.use(express.json());
 
 const CSV_FILE = join(__dirname, 'workout_logs.csv');
 
-// Columns: id,Date,Workout type,Name,set,rep,weight,rest
+// Columns: id,Date,Workout type,Name,set,rep,weight,rest,hold_seconds
+// VERSION: 9-column-v1
 if (!fs.existsSync(CSV_FILE)) {
   fs.writeFileSync(CSV_FILE, 'id,Date,Workout type,Name,set,rep,weight,rest,hold_seconds\n');
 }
 
 const logToCSVLine = (log) => {
-  return `${log.id},${log.date},${log.category},${log.exercise},${log.set || 1},${log.reps || 0},${log.weight},${log.rest},${log.hold_seconds || log.hold || 0}`;
+  const h = log.hold_seconds ?? log.holdSeconds ?? log.hold ?? 0;
+  return `${log.id},${log.date},${log.category},${log.exercise},${log.set || 1},${log.reps || 0},${log.weight || 0},${log.rest || 0},${h}`;
 };
 
 const csvLineToLog = (line) => {

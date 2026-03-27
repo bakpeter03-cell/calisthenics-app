@@ -11,7 +11,7 @@ export default function Dashboard() {
   const normalizedLogs = useMemo(() => normalizeLogs(logs), [logs]);
   
   // Global Filters
-  const [dateFilter, setDateFilter] = useState('This Week');
+  const [dateFilter, setDateFilter] = useState('This Month');
   const [typeFilter, setTypeFilter] = useState('All');
 
   const holdExercises = useMemo(() => Object.keys(EXERCISE_MAP).filter(ex => EXERCISE_MAP[ex].isHold), []);
@@ -160,11 +160,13 @@ export default function Dashboard() {
     return { cat, reps: repSum, pct: totalReps > 0 ? Math.round((repSum / totalReps) * 100) : 0 };
   });
 
-  // --- 4. Muscle Balance ---
-  const balanceLogs = dateOnlyLogs.filter(l => l.isRepBased);
+  // --- 4. Muscle Balance (Raw Reps Only) ---
   const balance = { Chest:0, Back:0, Arms:0, Legs:0, Core:0 };
-  balanceLogs.forEach(l => {
-    if (balance[l.muscleGroup] !== undefined) balance[l.muscleGroup] += l.reps;
+  dateOnlyLogs.forEach(l => {
+    const group = l.muscleGroup;
+    if (balance[group] !== undefined && l.reps > 0) {
+      balance[group] += l.reps;
+    }
   });
   const radarData = [
     { subject: `Chest ${balance.Chest}`, reps: balance.Chest },
@@ -202,10 +204,7 @@ export default function Dashboard() {
   }
 
   // --- 5. Weekly Activity (Last 7 Days - Bar Chart) ---
-  const last7DaysLogs = normalizedLogs.filter(l => {
-    if (typeFilter !== 'All' && l.type.toLowerCase() !== typeFilter.toLowerCase()) return false;
-    return l.isRepBased;
-  });
+  const last7DaysLogs = normalizedLogs.filter(l => l.isRepBased);
 
   const last7DaysData = Array.from({length:7}).map((_, i) => {
     const dStr = getDaysAgoStr(6 - i);
@@ -241,7 +240,10 @@ export default function Dashboard() {
   ];
 
   const pbs = pbConfig.map(cfg => {
-    const exLogs = normalizedLogs.filter(l => l.exercise.toLowerCase() === cfg.name.toLowerCase());
+    const exLogs = normalizedLogs.filter(l => {
+      const meta = getExerciseMeta(l.exercise);
+      return (meta.pbTarget || l.exercise).toLowerCase() === cfg.name.toLowerCase();
+    });
     if (!exLogs.length) return { name: cfg.name, val: 0, unit: cfg.unit, hasData: false };
     
     let maxVal = -1;
@@ -281,7 +283,7 @@ export default function Dashboard() {
 
   const CAT_MAP = {
     Push: ['Push-up', 'Decline Push-up', 'Incline Push-up', 'Dip', 'Straight Bar Dip', 'Pike Push-up', 'Elevated Pike Pushup', 'Handstand Push-up', 'Archer Push-up'],
-    Pull: ['Pull-up', 'Row', 'Tucked Front Lever Raise', 'Advanced Tucked Front Lever Raise', 'One-leg Front Lever Raise', 'Front Lever Raise', 'Chin-up', 'Muscle-up'],
+    Pull: ['Pull-up', 'Pull-ups', 'L-sit pull-up', 'Chin-up', 'Chin-ups', 'Chinups', 'Row', 'Rows', 'Tucked Front Lever Raise', 'Advanced Tucked Front Lever Raise', 'One-leg Front Lever Raise', 'Front Lever Raise', 'Muscle-up'],
     Legs: ['Squat', 'Pistol Squat', 'Lunge', 'One-leg Lunge', 'Calf Raise'],
     Core: ['Knee Raise', 'Toes-to-bar', 'Dragon Flag', 'L-sit']
   };
@@ -331,18 +333,14 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-           <select value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="bg-surface-container-low border-none rounded-lg text-sm font-bold uppercase tracking-widest py-2 px-4 cursor-pointer focus:ring-secondary">
+           <select 
+             value={dateFilter} 
+             onChange={e => setDateFilter(e.target.value)} 
+             className="bg-surface-container-low border border-outline-variant/10 rounded-lg text-sm font-black uppercase tracking-widest py-2 pl-4 pr-10 cursor-pointer focus:ring-primary outline-none appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2349454f%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_10px_center] bg-no-repeat transition-all hover:border-primary/30"
+           >
              <option>This Week</option>
              <option>This Month</option>
              <option>All Time</option>
-           </select>
-           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="bg-surface-container-low border-none rounded-lg text-sm font-bold uppercase tracking-widest py-2 px-4 cursor-pointer focus:ring-secondary">
-             <option>All</option>
-             <option>Push</option>
-             <option>Pull</option>
-             <option>Legs</option>
-             <option>Core</option>
-             <option>Skills</option>
            </select>
         </div>
       </div>
@@ -531,11 +529,11 @@ export default function Dashboard() {
              <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-widest text-center mt-1">Based on total reps</p>
           </div>
           
-          <div className="w-full h-56 mt-2">
+          <div className="w-full h-[450px] mt-2 px-4 text-center">
              <ResponsiveContainer width="100%" height="100%">
-               <RadarChart cx="50%" cy="50%" outerRadius="60%" data={radarData}>
+               <RadarChart cx="50%" cy="50%" outerRadius="50%" margin={{ top: 10, right: 10, bottom: 10, left: 10 }} data={radarData}>
                  <PolarGrid stroke="#e0e3e5" />
-                 <PolarAngleAxis dataKey="subject" tick={{ fill: '#49454f', fontSize: 11, fontWeight: 900 }} />
+                 <PolarAngleAxis dataKey="subject" tick={{ fill: '#49454f', fontSize: 10, fontWeight: 900 }} />
                  <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
                  <Radar name="Reps" dataKey="reps" stroke="#10b981" fill="#10b981" fillOpacity={0.4} />
                  <Tooltip cursor={{fill: 'rgba(0,0,0,0.05)'}} contentStyle={{ borderRadius: '8px', fontSize: '12px', border: '1px solid #e0e3e5', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
@@ -572,6 +570,31 @@ export default function Dashboard() {
           </div>
         </section>
 
+        {/* Personal Bests */}
+        <section className="md:col-span-7 bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/20">
+           <h3 className="font-headline text-2xl font-black tracking-tighter uppercase text-on-surface mb-8">Personal Bests</h3>
+           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
+              {pbs.map(pb => (
+                 <div key={pb.name} className="bg-surface p-8 rounded-2xl border border-outline-variant/20 shadow-sm flex flex-col items-center justify-center text-center group hover:border-primary/30 transition-all hover:shadow-md h-full">
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-on-surface-variant/60 mb-6">{pb.name}</p>
+                    {pb.hasData ? (
+                       <>
+                          <div className="flex items-baseline gap-1.5 mb-4">
+                             <span className="text-5xl font-black text-primary tracking-tighter leading-none">{pb.val}</span>
+                             <span className="text-sm font-black uppercase tracking-widest text-on-surface-variant/40">{pb.unit}</span>
+                          </div>
+                          <p className="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-widest mt-2">Achieved {pb.achievedDate}</p>
+                       </>
+                    ) : (
+                       <div className="py-4">
+                          <span className="text-[11px] font-black uppercase tracking-widest text-on-surface-variant/20">No data yet</span>
+                       </div>
+                    )}
+                 </div>
+              ))}
+           </div>
+        </section>
+
         {/* Rest Efficiency */}
         <section className="md:col-span-5 bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/20">
           <div className="flex justify-between items-start mb-6 text-on-surface">
@@ -602,36 +625,6 @@ export default function Dashboard() {
           <p className="text-center font-black text-2xl tracking-tighter mt-4 text-on-surface">{avgRest !== null ? `${avgRest}s avg` : 'No data'}</p>
         </section>
 
-        {/* Personal Bests */}
-        <section className="md:col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/20">
-           <h3 className="font-headline text-2xl font-black tracking-tighter uppercase text-on-surface mb-8">Personal Bests</h3>
-           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {pbs.map(pb => (
-                 <div key={pb.name} className="bg-surface p-8 rounded-2xl border border-outline-variant/20 shadow-sm flex flex-col items-center justify-center text-center group hover:border-primary/30 transition-all hover:shadow-md h-full">
-                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-on-surface-variant/60 mb-6">{pb.name}</p>
-                    
-                    {pb.hasData ? (
-                       <>
-                          <div className="flex items-baseline gap-1.5 mb-4">
-                             <span className="text-5xl font-black text-primary tracking-tighter leading-none">
-                                {pb.val}
-                             </span>
-                             <span className="text-sm font-black uppercase tracking-widest text-on-surface-variant/40">{pb.unit}</span>
-                          </div>
-                          <p className="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-widest mt-2">
-                             Achieved {pb.achievedDate}
-                          </p>
-                       </>
-                    ) : (
-                       <div className="py-4">
-                          <span className="text-[11px] font-black uppercase tracking-widest text-on-surface-variant/20">No data yet</span>
-                       </div>
-                    )}
-                 </div>
-              ))}
-           </div>
-        </section>
-
         {/* Skill Progression LineChart */}
         <section className="md:col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/20">
           <div className="flex justify-between items-start mb-4">
@@ -639,7 +632,11 @@ export default function Dashboard() {
               <h3 className="font-headline text-xl font-bold tracking-tight uppercase text-on-surface">Skill Progression</h3>
               <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mt-1">Weekly hold metrics (s)</p>
             </div>
-            <select value={skillChartEx} onChange={e => setSkillChartEx(e.target.value)} className="bg-surface border border-outline-variant/20 rounded-lg text-sm font-bold uppercase py-2 px-3 focus:ring-primary outline-none text-on-surface">
+            <select 
+              value={skillChartEx} 
+              onChange={e => setSkillChartEx(e.target.value)} 
+              className="bg-surface border border-outline-variant/20 rounded-lg text-xs font-black uppercase py-2 pl-3 pr-9 focus:ring-primary outline-none text-on-surface appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2349454f%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_8px_center] bg-no-repeat"
+            >
               {holdExercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
             </select>
           </div>
@@ -663,20 +660,6 @@ export default function Dashboard() {
         </section>
         
 
-
-        {/* Diagnostics */}
-        <section className="md:col-span-12 bg-surface-container-highest rounded-xl p-6 border border-outline-variant/20 font-mono text-[10px] text-on-surface-variant opacity-50 hover:opacity-100 transition-opacity mt-8">
-          <h4 className="font-bold mb-2 text-on-surface uppercase tracking-widest">Developer Diagnostics</h4>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>Parsed rows: {normalizedLogs.length}</div>
-            <div>Valid dates: {normalizedLogs.filter(l => l.dateObj).length}</div>
-            <div>Unique workout days: {allUniqueDays.length}</div>
-            <div>This week's days: {uniqueDaysThisWeek}</div>
-            <div>This month's days: {uniqueDaysThisMonth}</div>
-            <div>28-d heatmap active: {heatmapData.filter(d => d && d.hasWorkout).length}</div>
-            <div className="col-span-2">Buckets: C:{balance.Chest} B:{balance.Back} A:{balance.Arms} L:{balance.Legs} C:{balance.Core}</div>
-          </div>
-        </section>
 
       </div>
     </div>

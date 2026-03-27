@@ -200,16 +200,18 @@ export default function AddWorkout() {
           
           <div className="grid grid-cols-2 gap-4">
             <Input label="Weight (kg)" type="number" value={weight} onChange={e => setWeight(e.target.value)} onKeyDown={handleKeyDown} placeholder="BW" />
-            <Input 
-              label="Reps" 
-              type="number" 
-              value={reps} 
-              onChange={e => setReps(e.target.value)} 
-              onKeyDown={handleKeyDown} 
-              onDecrement={() => setReps(r => String(Math.max(0, (parseInt(r)||0) - 1)))} 
-              onIncrement={() => setReps(r => String((parseInt(r)||0) + 1))} 
-              placeholder="0" 
-            />
+            {!['L-sit', 'Handstand', 'Front Lever'].includes(exercise) && (
+              <Input 
+                label="Reps" 
+                type="number" 
+                value={reps} 
+                onChange={e => setReps(e.target.value)} 
+                onKeyDown={handleKeyDown} 
+                onDecrement={() => setReps(r => String(Math.max(0, (parseInt(r)||0) - 1)))} 
+                onIncrement={() => setReps(r => String((parseInt(r)||0) + 1))} 
+                placeholder="0" 
+              />
+            )}
           </div>
           
           <div className="grid grid-cols-2 gap-4">
