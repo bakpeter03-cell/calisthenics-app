@@ -1,0 +1,5 @@
+/* Custom Global Overrides */
+/* Tailwind is loaded via CDN in index.html, no need to import here */
+html {
+  overflow-y: scroll;
+}

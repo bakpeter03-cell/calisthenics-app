@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CALI Tracker</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-tertiary": "#ffffff",
+                        "surface-container-high": "#e6e8ea",
+                        "on-secondary": "#ffffff",
+                        "background": "#f8f9fb",
+                        "on-background": "#191c1e",
+                        "on-tertiary-fixed-variant": "#842225",
+                        "surface-tint": "#006c49",
+                        "on-secondary-fixed-variant": "#004395",
+                        "on-primary-fixed": "#002113",
+                        "tertiary-fixed-dim": "#ffb3af",
+                        "surface-variant": "#e0e3e5",
+                        "inverse-surface": "#2d3133",
+                        "primary-fixed": "#6ffbbe",
+                        "on-secondary-fixed": "#001a42",
+                        "inverse-primary": "#4edea3",
+                        "secondary-container": "#2170e4",
+                        "on-primary-fixed-variant": "#005236",
+                        "on-surface-variant": "#3c4a42",
+                        "primary": "#006c49",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#bbcabf",
+                        "tertiary": "#a43a3a",
+                        "surface-container-low": "#f2f4f6",
+                        "primary-fixed-dim": "#4edea3",
+                        "surface-dim": "#d8dadc",
+                        "tertiary-container": "#fc7c78",
+                        "primary-container": "#10b981",
+                        "surface": "#f8f9fb",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-container": "#eceef0",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-error": "#ffffff",
+                        "on-surface": "#191c1e",
+                        "on-error-container": "#93000a",
+                        "error-container": "#ffdad6",
+                        "surface-container-highest": "#e0e3e5",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#ffdad7",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed": "#410005",
+                        "on-primary-container": "#00422b",
+                        "on-secondary-container": "#fefcff",
+                        "on-tertiary-container": "#711419",
+                        "outline": "#6c7a71",
+                        "secondary-fixed": "#d8e2ff",
+                        "surface-bright": "#f8f9fb",
+                        "secondary": "#0058be"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "inter": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .glass-header {
+            backdrop-filter: blur(20px);
+            background-color: rgba(248, 249, 251, 0.8);
+        }
+        body {
+            min-height: max(884px, 100dvh);
+            background-color: #f8f9fb;
+        }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .chart-grid { background-image: radial-gradient(circle, #e0e3e5 1px, transparent 1px); background-size: 24px 24px; }
+    </style>
+  </head>
+  <body class="bg-surface font-body text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed antialiased min-h-screen">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

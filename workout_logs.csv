@@ -1,0 +1,91 @@
+id,Date,Workout type,Name,set,rep,weight,rest,hold_seconds
+import_1774564010887_0,2026-03-16,Pull,pull-up,1,7,12,0,0
+import_1774564010887_1,2026-03-16,Pull,pull-up,2,7,12,0,0
+import_1774564010887_2,2026-03-16,Pull,pull-up,3,7,12,0,0
+import_1774564010887_3,2026-03-16,Pull,pull-up,4,7,12,0,0
+import_1774564010887_4,2026-03-16,Pull,pull-up,5,7,12,0,0
+import_1774564010887_5,2026-03-16,Pull,advanced tucked front lever raise,1,5,0,0,0
+import_1774564010887_6,2026-03-16,Pull,advanced tucked front lever raise,2,5,0,0,0
+import_1774564010887_7,2026-03-16,Pull,advanced tucked front lever raise,3,5,0,0,0
+import_1774564010887_8,2026-03-16,Pull,row,1,8,12,0,0
+import_1774564010887_9,2026-03-16,Pull,row,2,8,12,0,0
+import_1774564010887_10,2026-03-16,Pull,row,3,8,12,0,0
+import_1774564010887_11,2026-03-16,Pull,row,4,8,12,0,0
+import_1774564010887_12,2026-03-16,Pull,l-sit pull-up,1,4,0,0,0
+import_1774564010887_13,2026-03-16,Pull,l-sit pull-up,2,4,0,0,0
+import_1774564010887_14,2026-03-17,Push,decline push-up,1,8,16,0,0
+import_1774564010887_15,2026-03-17,Push,decline push-up,2,8,16,0,0
+import_1774564010887_16,2026-03-17,Push,decline push-up,3,8,16,0,0
+import_1774564010887_17,2026-03-17,Push,decline push-up,4,8,16,0,0
+import_1774564010887_18,2026-03-17,Push,dip,1,8,16,0,0
+import_1774564010887_19,2026-03-17,Push,dip,2,8,16,0,0
+import_1774564010887_20,2026-03-17,Push,dip,3,8,16,0,0
+import_1774564010887_21,2026-03-17,Push,dip,4,8,16,0,0
+import_1774564010887_22,2026-03-17,Push,elevated pike push-up,1,8,0,0,0
+import_1774564010887_23,2026-03-17,Push,elevated pike push-up,2,8,0,0,0
+import_1774564010887_24,2026-03-17,Push,elevated pike push-up,3,8,0,0,0
+import_1774564010887_25,2026-03-17,Core,dragon flag,1,5,0,0,0
+import_1774564010887_26,2026-03-17,Core,dragon flag,2,5,0,0,0
+import_1774564010887_27,2026-03-21,Push,decline push-up,1,8,16,0,0
+import_1774564010887_28,2026-03-21,Push,decline push-up,2,8,16,0,0
+import_1774564010887_29,2026-03-21,Push,decline push-up,3,8,16,0,0
+import_1774564010887_30,2026-03-21,Push,decline push-up,4,8,16,0,0
+import_1774564010887_31,2026-03-21,Push,decline push-up,5,8,16,0,0
+import_1774564010887_32,2026-03-21,Push,incline push-up,1,6,16,0,0
+import_1774564010887_33,2026-03-21,Push,incline push-up,2,6,16,0,0
+import_1774564010887_34,2026-03-21,Push,incline push-up,3,6,16,0,0
+import_1774564010887_35,2026-03-21,Push,incline push-up,4,6,16,0,0
+import_1774564010887_36,2026-03-21,Push,incline push-up,5,6,16,0,0
+import_1774564010887_37,2026-03-21,Push,dip,1,6,16,0,0
+import_1774564010887_38,2026-03-21,Push,dip,2,6,16,0,0
+import_1774564010887_39,2026-03-21,Push,dip,3,6,16,0,0
+import_1774564010887_40,2026-03-21,Push,dip,4,6,16,0,0
+import_1774564010887_41,2026-03-21,Push,dip,5,6,16,0,0
+import_1774564010887_42,2026-03-21,Push,push-up,1,8,0,0,0
+import_1774564010887_43,2026-03-21,Push,push-up,2,8,0,0,0
+import_1774564010887_44,2026-03-21,Core,dragon flag,1,4,0,0,0
+import_1774564010887_45,2026-03-21,Core,dragon flag,2,4,0,0,0
+import_1774564010887_46,2026-03-21,Core,dragon flag,3,4,0,0,0
+import_1774564010887_47,2026-03-21,Core,knee raises,1,12,0,0,0
+import_1774564010887_48,2026-03-21,Core,knee raises,2,12,0,0,0
+import_1774564010887_49,2026-03-21,Core,knee raises,3,12,0,0,0
+import_1774564010887_50,2026-03-21,Core,knee raises,4,12,0,0,0
+import_1774564010887_51,2026-03-22,Pull,pull-up,1,7,16,0,0
+import_1774564010887_52,2026-03-22,Pull,pull-up,2,7,16,0,0
+import_1774564010887_53,2026-03-22,Pull,pull-up,3,7,16,0,0
+import_1774564010887_54,2026-03-22,Pull,pull-up,4,7,16,0,0
+import_1774564010887_55,2026-03-22,Pull,pull-up,5,7,16,0,0
+import_1774564010887_56,2026-03-22,Pull,row,1,8,16,0,0
+import_1774564010887_57,2026-03-22,Pull,row,2,8,16,0,0
+import_1774564010887_58,2026-03-22,Pull,row,3,8,16,0,0
+import_1774564010887_59,2026-03-22,Pull,row,4,8,16,0,0
+import_1774564010887_60,2026-03-22,Pull,row,5,8,16,0,0
+import_1774564010887_61,2026-03-22,Pull,chinups,1,8,0,0,0
+import_1774564010887_62,2026-03-22,Pull,chinups,2,8,0,0,0
+import_1774564010887_63,2026-03-22,Pull,chinups,3,8,0,0,0
+import_1774564010887_64,2026-03-24,Push,decline push-up,1,8,16,0,0
+import_1774564010887_65,2026-03-24,Push,decline push-up,2,8,16,0,0
+import_1774564010887_66,2026-03-24,Push,decline push-up,3,8,16,0,0
+import_1774564010887_67,2026-03-24,Push,decline push-up,4,8,16,0,0
+import_1774564010887_68,2026-03-24,Push,decline push-up,5,8,16,0,0
+import_1774564010887_69,2026-03-24,Push,dip,1,6,16,0,0
+import_1774564010887_70,2026-03-24,Push,dip,2,6,16,0,0
+import_1774564010887_71,2026-03-24,Push,dip,3,6,16,0,0
+import_1774564010887_72,2026-03-24,Push,dip,4,6,16,0,0
+import_1774564010887_73,2026-03-24,Push,dip,5,6,16,0,0
+import_1774564010887_74,2026-03-24,Push,incline push-up,1,8,16,0,0
+import_1774564010887_75,2026-03-24,Push,incline push-up,2,8,16,0,0
+import_1774564010887_76,2026-03-24,Push,incline push-up,3,8,16,0,0
+import_1774564010887_77,2026-03-24,Push,incline push-up,4,8,16,0,0
+import_1774564010887_78,2026-03-24,Push,incline push-up,5,8,16,0,0
+import_1774564010887_79,2026-03-24,Push,push-up,1,8,0,0,0
+import_1774564010887_80,2026-03-24,Push,push-up,2,8,0,0,0
+import_1774564010887_81,2026-03-24,Core,dragon flag,1,4,0,0,0
+import_1774564010887_82,2026-03-24,Core,dragon flag,2,4,0,0,0
+import_1774564010887_83,2026-03-24,Core,dragon flag,3,4,0,0,0
+import_1774564010887_84,2026-03-24,Core,knee raise,1,10,0,0,0
+import_1774564010887_85,2026-03-24,Core,knee raise,2,10,0,0,0
+import_1774564010887_86,2026-03-24,Core,knee raise,3,10,0,0,0
+import_1774564010887_87,2026-03-24,Core,knee raise,4,10,0,0,0
+import_1774564010887_88,2026-03-24,Core,toes-to-bar,1,5,0,0,0
+import_1774564010887_89,2026-03-24,Core,toes-to-bar,2,5,0,0,0
