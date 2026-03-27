@@ -5,9 +5,27 @@ import { EXERCISE_MAP, getExerciseMeta } from '../utils/exerciseMap';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 export default function Dashboard() {
-  const { logs, loading, migrateToCloud, fetchLogs, fetchLocalCSV } = useWorkoutLogs();
-  const [migrationStatus, setMigrationStatus] = useState(null); // { success, message }
-  const [recoveryStatus, setRecoveryStatus] = useState(null); // { success, message }
+  const { 
+    logs, 
+    loading, 
+    migrateToCloud, 
+    fetchLocalCSV, 
+    profile, 
+    switchProfile 
+  } = useWorkoutLogs();
+
+  const [migrationStatus, setMigrationStatus] = useState(null);
+  const [recoveryStatus, setRecoveryStatus] = useState(null);
+  const [newProfileName, setNewProfileName] = useState('');
+  const [isAddingProfile, setIsAddingProfile] = useState(false);
+
+  const PROFILES = ['Guest', 'User 1', 'User 2']; // Simple defaults or discovered profiles
+  // Actually, let's just allow the user to type a name.
+
+  const handleProfileChange = (e) => {
+    switchProfile(e.target.value);
+  };
+ // { success, message }
   
   // Normalization
   const normalizedLogs = useMemo(() => normalizeLogs(logs), [logs]);
@@ -669,6 +687,56 @@ export default function Dashboard() {
       <div className="pt-12 border-t border-outline-variant/10 space-y-6">
         <h3 className="font-headline text-xl font-bold tracking-tight uppercase text-on-surface px-1">Settings & Backup</h3>
         
+        {/* Profile Switcher */}
+        <div className="bg-surface-container-low p-6 rounded-xl border border-outline-variant/10 shadow-sm space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h4 className="font-headline text-lg font-bold uppercase text-on-surface">User Profile</h4>
+              <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mt-1">Separate your data from other users</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-black text-primary bg-primary/10 px-3 py-1.5 rounded-lg uppercase tracking-wider">{profile}</span>
+              <button 
+                onClick={() => setIsAddingProfile(!isAddingProfile)}
+                className="text-on-surface-variant hover:text-primary transition-colors"
+              >
+                <span className="material-symbols-outlined text-lg">{isAddingProfile ? 'close' : 'edit'}</span>
+              </button>
+            </div>
+          </div>
+
+          {isAddingProfile && (
+            <div className="flex gap-2 animate-in fade-in slide-in-from-top-2">
+              <input 
+                type="text"
+                placeholder="Enter profile name (e.g. Peter)"
+                value={newProfileName}
+                onChange={(e) => setNewProfileName(e.target.value)}
+                className="flex-1 bg-surface border border-outline-variant/20 rounded-xl px-4 py-2 text-sm font-bold text-on-surface focus:ring-1 focus:ring-primary outline-none"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newProfileName.trim()) {
+                    switchProfile(newProfileName.trim());
+                    setNewProfileName('');
+                    setIsAddingProfile(false);
+                  }
+                }}
+              />
+              <button 
+                onClick={() => {
+                  if (newProfileName.trim()) {
+                    switchProfile(newProfileName.trim());
+                    setNewProfileName('');
+                    setIsAddingProfile(false);
+                  }
+                }}
+                className="bg-primary text-on-primary px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20"
+              >
+                Switch
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Migration Notice */}
         {(migrationStatus?.success === false || recoveryStatus?.success === false) && (
           <div className="bg-error/10 border border-error/20 p-4 rounded-xl text-error text-xs font-bold flex items-center justify-between">

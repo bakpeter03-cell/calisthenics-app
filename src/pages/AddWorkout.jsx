@@ -8,7 +8,7 @@ import { getExerciseMeta } from '../utils/exerciseMap';
 
 const EXERCISES = {
   Push: ['Push-up', 'Decline Push-up', 'Incline Push-up', 'Dip', 'Straight Bar Dip', 'Pike Push-up', 'Elevated Pike Pushup', 'Handstand Push-up', 'Archer Push-up'],
-  Pull: ['Pull-up', 'Row', 'Tucked Front Lever Raise', 'Advanced Tucked Front Lever Raise', 'One-leg Front Lever Raise', 'Front Lever Raise', 'Chin-up'],
+  Pull: ['Pull-up', 'Chin-up', 'L-sit pull-up', 'Row', 'Tucked Front Lever Raise', 'Advanced Tucked Front Lever Raise', 'One-leg Front Lever Raise', 'Front Lever Raise'],
   Legs: ['Squat', 'Pistol Squat', 'Lunge', 'One-leg Lunge', 'Calf Raise'],
   Core: ['Knee Raise', 'Toes-to-bar', 'Dragon Flag', 'L-sit'],
   Skills: ['Muscle-up', 'Handstand', 'Front Lever', 'L-sit']
@@ -32,6 +32,7 @@ const parseDuration = (str) => {
 
 export default function AddWorkout() {
   const { addLog, logs, deleteLog } = useWorkoutLogs();
+  const { startTimer, setTargetSeconds } = useTimer();
   const [category, setCategory] = useState('Push');
   const [exercise, setExercise] = useState(EXERCISES.Push[0]);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -47,14 +48,11 @@ export default function AddWorkout() {
     return meta.defaultRestSeconds || 150;
   };
 
-  const [timerTarget, setTimerTarget] = useState(150);
-  const [autoStartTrigger, setAutoStartTrigger] = useState(0);
-
   useEffect(() => {
     const t = getTargetRest(exercise);
-    setTimerTarget(t);
+    setTargetSeconds(t);
     setRest(String(t));
-  }, [exercise]);
+  }, [exercise, setTargetSeconds]);
 
 
 
@@ -85,8 +83,7 @@ export default function AddWorkout() {
     setWeight('');
     setReps('');
     setHold('');
-    setTimerTarget(t);
-    setAutoStartTrigger(Date.now());
+    startTimer(parseInt(rest) || 150);
     setRest(String(t));
   };
 
@@ -146,10 +143,7 @@ export default function AddWorkout() {
     <div className="space-y-8">
       {/* Smart Countdown Timer */}
       <PulseTimer 
-        targetSeconds={timerTarget} 
-        autoStartTrigger={autoStartTrigger} 
         onPresetChange={(secs) => {
-          setTimerTarget(secs);
           setRest(String(secs));
           localStorage.setItem(`cali_prefer_rest_${exercise}`, secs);
         }} 

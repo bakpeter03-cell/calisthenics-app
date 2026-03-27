@@ -1,61 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import { useRef } from 'react';
+import { useTimer } from '../contexts/TimerContext';
 
-export default function PulseTimer({ targetSeconds = 150, autoStartTrigger = 0, onPresetChange }) {
-  const [secondsLeft, setSecondsLeft] = useState(targetSeconds);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isReady, setIsReady] = useState(false);
-  const timerRef = useRef(null);
-  const audioContextRef = useRef(null);
-
-  const playAlert = () => {
-    if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 200]);
-    try {
-      if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      const ctx = audioContextRef.current;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(800, ctx.currentTime);
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 1);
-    } catch(e) {}
-  };
-
-  useEffect(() => {
-    setSecondsLeft(targetSeconds);
-    if (autoStartTrigger > 0) {
-      setIsRunning(true);
-      setIsReady(false);
-    } else {
-      setIsRunning(false);
-      setIsReady(false);
-    }
-  }, [autoStartTrigger, targetSeconds]);
-
-  useEffect(() => {
-    if (isRunning && secondsLeft > 0) {
-      timerRef.current = setInterval(() => {
-        setSecondsLeft(s => {
-          if (s <= 1) {
-            clearInterval(timerRef.current);
-            setIsRunning(false);
-            setIsReady(true);
-            playAlert();
-            return 0;
-          }
-          return s - 1;
-        });
-      }, 1000);
-    } else {
-      clearInterval(timerRef.current);
-    }
-    return () => clearInterval(timerRef.current);
-  }, [isRunning, secondsLeft]);
+export default function PulseTimer({ onPresetChange }) {
+  const { 
+    targetSeconds, 
+    secondsLeft, 
+    isRunning, 
+    isReady, 
+    startTimer, 
+    pauseTimer, 
+    resumeTimer, 
+    resetTimer, 
+    setPreset 
+  } = useTimer();
 
   const formatTime = (secs) => {
     const m = Math.floor(secs / 60).toString().padStart(2, '0');
@@ -63,27 +20,9 @@ export default function PulseTimer({ targetSeconds = 150, autoStartTrigger = 0, 
     return `${m}:${s}`;
   };
 
-  const setPreset = (secs) => {
-    setIsRunning(false);
-    setIsReady(false);
-    setSecondsLeft(secs);
+  const handlePresetClick = (secs) => {
+    setPreset(secs);
     if (onPresetChange) onPresetChange(secs);
-  };
-
-  const handleToggle = () => {
-    if (isReady) {
-      setIsReady(false);
-      setSecondsLeft(targetSeconds);
-      setIsRunning(true);
-    } else {
-      setIsRunning(!isRunning);
-    }
-  };
-
-  const handleReset = () => {
-    setIsRunning(false);
-    setIsReady(false);
-    setSecondsLeft(targetSeconds);
   };
 
   const PRESETS = [90, 120, 150, 180];
@@ -99,7 +38,7 @@ export default function PulseTimer({ targetSeconds = 150, autoStartTrigger = 0, 
              {PRESETS.map(p => (
                <button 
                  key={p} 
-                 onClick={() => setPreset(p)} 
+                 onClick={() => handlePresetClick(p)} 
                  className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${targetSeconds === p ? 'bg-primary/20 text-primary' : 'bg-surface border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container-high'}`}
                >
                  {p}s
@@ -114,14 +53,14 @@ export default function PulseTimer({ targetSeconds = 150, autoStartTrigger = 0, 
 
         <div className="flex gap-4 mt-8 w-full sm:w-auto">
           <button 
-            onClick={handleReset} 
+            onClick={resetTimer} 
             className="flex-1 sm:flex-none bg-surface border border-outline-variant/20 text-on-surface-variant px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-xs transition-all active:scale-95 shadow-sm"
           >
             Reset
           </button>
           
           <button 
-            onClick={handleToggle} 
+            onClick={isRunning ? pauseTimer : resumeTimer} 
             className={`flex-[2] sm:flex-none px-10 py-3 rounded-xl font-black uppercase tracking-wider text-sm transition-all active:scale-95 shadow-sm ${isRunning ? 'bg-surface-container-highest text-on-surface' : isReady ? 'bg-primary text-on-primary' : 'bg-primary-container text-on-primary-container'}`}
           >
             {isRunning ? 'Pause' : isReady ? 'Restart' : 'Resume & Start'}
