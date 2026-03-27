@@ -192,7 +192,7 @@ export default function AddWorkout() {
              <select 
                value={exercise} 
                onChange={e => setExercise(e.target.value)}
-               className="w-full bg-surface-container-low border-0 border-l-2 border-transparent focus:border-secondary rounded-xl px-4 py-3 focus:ring-0 text-on-surface font-bold uppercase tracking-wide"
+               className="w-full bg-surface-container-low border border-outline-variant/10 focus:border-secondary focus:bg-secondary/5 rounded-xl px-4 py-3 focus:ring-0 text-on-surface font-bold transition-colors uppercase tracking-wide"
              >
                {EXERCISES[category].map(ex => <option key={ex} value={ex}>{ex}</option>)}
              </select>
