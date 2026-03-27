@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-
-const API_URL = 'http://localhost:3001/api/logs';
+import { supabase } from '../utils/supabaseClient';
 
 export function useWorkoutLogs() {
   const [logs, setLogs] = useState(() => {
@@ -12,34 +11,40 @@ export function useWorkoutLogs() {
     }
   });
 
+  const [loading, setLoading] = useState(false);
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('workout_logs')
+        .select('*')
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      setLogs(data || []);
+      localStorage.setItem('cali_logs', JSON.stringify(data || []));
+    } catch (err) {
+      console.warn("Supabase fetch failed. Using local cache.", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let ignore = false;
-    const fetchLogs = async () => {
-      try {
-        const res = await fetch(API_URL);
-        if (res.ok) {
-          const data = await res.json();
-          if (!ignore) {
-            setLogs(data);
-            localStorage.setItem('cali_logs', JSON.stringify(data));
-          }
-        }
-      } catch {
-        // Backend offline, skip replacing cache
-        console.warn("Backend offline. Using local storage as fallback.");
-      }
-    };
     fetchLogs();
-    return () => { ignore = true; };
   }, []);
 
   const addLog = async (logData) => {
+    // Determine set number locally for immediate UI response
     const today = new Date().toISOString().split('T')[0];
     const logDate = logData.date || today;
     const todaysLogsForEx = logs.filter(l => l.date === logDate && l.exercise === logData.exercise);
     
+    const tempId = 'temp-' + Date.now();
     const newLog = {
-      id: Date.now().toString() + "_" + Math.random().toString(36).substr(2, 9),
       date: logDate,
       category: logData.category || "Unknown",
       exercise: logData.exercise || "",
@@ -51,34 +56,72 @@ export function useWorkoutLogs() {
     };
     
     // Optimistic UI update
-    const updatedLogs = [newLog, ...logs];
-    setLogs(updatedLogs);
-    localStorage.setItem('cali_logs', JSON.stringify(updatedLogs));
+    setLogs(prev => [{ ...newLog, id: tempId }, ...prev]);
 
     try {
-      await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newLog)
-      });
+      const { data, error } = await supabase
+        .from('workout_logs')
+        .insert([newLog])
+        .select();
+
+      if (error) throw error;
+      
+      // Update with real ID from Supabase
+      if (data && data[0]) {
+        setLogs(prev => {
+          const updated = prev.map(l => l.id === tempId ? data[0] : l);
+          localStorage.setItem('cali_logs', JSON.stringify(updated));
+          return updated;
+        });
+      }
     } catch (e) {
-      console.error("Failed to sync to CSV backend", e);
+      console.error("Failed to sync to Supabase", e);
     }
-    
-    return newLog;
   };
 
   const deleteLog = async (id) => {
+    if (typeof id === 'string' && id.startsWith('temp-')) {
+       setLogs(prev => prev.filter(l => l.id !== id));
+       return;
+    }
+
     const updatedLogs = logs.filter(log => log.id !== id);
     setLogs(updatedLogs);
     localStorage.setItem('cali_logs', JSON.stringify(updatedLogs));
 
     try {
-      await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+      const { error } = await supabase
+        .from('workout_logs')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
     } catch (e) {
-      console.error("Failed to delete purely from CSV backend", e);
+      console.error("Failed to delete from Supabase", e);
     }
   };
 
-  return { logs, setLogs, addLog, deleteLog };
+  const migrateToCloud = async () => {
+    const localLogs = JSON.parse(localStorage.getItem('cali_logs') || '[]');
+    if (localLogs.length === 0) return { success: true, count: 0 };
+    
+    // Check if cloud is already populated to avoid duplicates (naive check)
+    const { count } = await supabase.from('workout_logs').select('*', { count: 'exact', head: true });
+    if (count > 0) return { success: false, message: "Cloud already has data. Manual migration skipped." };
+
+    setLoading(true);
+    try {
+      const logsToUpload = localLogs.map(({ id, ...rest }) => rest);
+      const { error } = await supabase.from('workout_logs').insert(logsToUpload);
+      if (error) throw error;
+      await fetchLogs();
+      return { success: true, count: localLogs.length };
+    } catch (err) {
+      console.error("Migration failed", err);
+      return { success: false, message: err.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { logs, loading, addLog, deleteLog, fetchLogs, migrateToCloud };
 }

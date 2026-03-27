@@ -5,7 +5,8 @@ import { EXERCISE_MAP, getExerciseMeta } from '../utils/exerciseMap';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 export default function Dashboard() {
-  const { logs } = useWorkoutLogs();
+  const { logs, loading, migrateToCloud, fetchLogs } = useWorkoutLogs();
+  const [migrationStatus, setMigrationStatus] = useState(null); // { success, message }
   
   // Normalization
   const normalizedLogs = useMemo(() => normalizeLogs(logs), [logs]);
@@ -324,6 +325,46 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Migration Notice */}
+      {migrationStatus?.success === false && (
+        <div className="bg-error/10 border border-error/20 p-4 rounded-xl text-error text-xs font-bold flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm">error</span>
+            {migrationStatus.message}
+          </div>
+          <button onClick={() => setMigrationStatus(null)} className="opacity-50 hover:opacity-100">Dismiss</button>
+        </div>
+      )}
+      
+      {migrationStatus?.success === true && (
+        <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl text-primary text-xs font-bold flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm">cloud_done</span>
+            Successfully migrated {migrationStatus.count} workouts to the cloud!
+          </div>
+          <button onClick={() => setMigrationStatus(null)} className="opacity-50 hover:opacity-100">Dismiss</button>
+        </div>
+      )}
+
+      {/* Manual Sync Trigger (If needed) */}
+      {!loading && logs.length > 0 && !migrationStatus && (
+        <div className="bg-secondary/5 border border-secondary/10 p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
+           <div>
+             <h4 className="font-headline text-lg font-bold uppercase text-on-surface">Data Migration</h4>
+             <p className="text-secondary/60 text-[10px] font-bold uppercase tracking-widest mt-1">Found local logs. Upload them to Supabase for mobile sync?</p>
+           </div>
+           <button 
+             onClick={async () => {
+               const res = await migrateToCloud();
+               setMigrationStatus(res);
+             }}
+             className="bg-secondary text-on-secondary px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest shadow-lg shadow-secondary/20 hover:scale-[1.02] transition-all"
+           >
+             Sync Local Data to Cloud
+           </button>
+        </div>
+      )}
+
       {/* Global Filters */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/20 gap-4">
         <div>
