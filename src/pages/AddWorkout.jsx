@@ -174,7 +174,7 @@ export default function AddWorkout() {
           <button
             key={cat}
             onClick={() => handleCategoryChange(cat)}
-            className={`flex-1 py-3 px-4 rounded-xl font-bold text-center transition-all duration-200 uppercase tracking-wide text-sm ${
+            className={`flex-1 py-3 px-4 rounded-xl font-bold text-center uppercase tracking-wide text-sm ${
               category === cat 
                 ? 'bg-primary text-on-primary shadow-md' 
                 : 'bg-transparent border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-low'
@@ -192,7 +192,7 @@ export default function AddWorkout() {
              <select 
                value={exercise} 
                onChange={e => setExercise(e.target.value)}
-               className="w-full bg-surface-container-low border-0 border-l-2 border-transparent focus:border-secondary rounded-xl px-4 py-3 focus:ring-0 text-on-surface font-bold transition-all uppercase tracking-wide"
+               className="w-full bg-surface-container-low border-0 border-l-2 border-transparent focus:border-secondary rounded-xl px-4 py-3 focus:ring-0 text-on-surface font-bold uppercase tracking-wide"
              >
                {EXERCISES[category].map(ex => <option key={ex} value={ex}>{ex}</option>)}
              </select>

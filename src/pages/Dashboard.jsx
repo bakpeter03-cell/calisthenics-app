@@ -326,64 +326,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Migration Notice */}
-      {(migrationStatus?.success === false || recoveryStatus?.success === false) && (
-        <div className="bg-error/10 border border-error/20 p-4 rounded-xl text-error text-xs font-bold flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm">error</span>
-            {migrationStatus?.message || recoveryStatus?.message}
-          </div>
-          <button onClick={() => { setMigrationStatus(null); setRecoveryStatus(null); }} className="opacity-50 hover:opacity-100">Dismiss</button>
-        </div>
-      )}
-      
-      {(migrationStatus?.success === true || recoveryStatus?.success === true) && (
-        <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl text-primary text-xs font-bold flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm">cloud_done</span>
-            {migrationStatus?.success ? `Successfully migrated ${migrationStatus.count} workouts to the cloud!` : `Successfully recovered ${recoveryStatus.count} workouts from local CSV!`}
-          </div>
-          <button onClick={() => { setMigrationStatus(null); setRecoveryStatus(null); }} className="opacity-50 hover:opacity-100">Dismiss</button>
-        </div>
-      )}
-
-      {/* Manual Sync Trigger (If local data is present) */}
-      {!loading && logs.length > 0 && !migrationStatus && (
-        <div className="bg-primary/5 border border-primary/10 p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
-           <div>
-             <h4 className="font-headline text-lg font-bold uppercase text-on-surface">Cloud Migration</h4>
-             <p className="text-primary/60 text-[10px] font-bold uppercase tracking-widest mt-1">Found {logs.length} local logs. Upload them to Supabase for mobile sync?</p>
-           </div>
-           <button 
-             onClick={async () => {
-               const res = await migrateToCloud();
-               setMigrationStatus(res);
-             }}
-             className="bg-primary text-on-primary px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all"
-           >
-             Sync Local Data to Cloud
-           </button>
-        </div>
-      )}
-
-      {/* Recovery Trigger (If dashboard is empty) */}
-      {!loading && logs.length === 0 && !recoveryStatus && (
-        <div className="bg-secondary/5 border border-secondary/10 p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
-           <div>
-             <h4 className="font-headline text-lg font-bold uppercase text-on-surface">Data Recovery</h4>
-             <p className="text-secondary/60 text-[10px] font-bold uppercase tracking-widest mt-1">Cloud is empty. Pull your history from the local CSV file?</p>
-           </div>
-           <button 
-             onClick={async () => {
-               const res = await fetchLocalCSV();
-               setRecoveryStatus(res);
-             }}
-             className="bg-secondary text-on-secondary px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest shadow-lg shadow-secondary/20 hover:scale-[1.02] transition-all"
-           >
-             Recover History from CSV
-           </button>
-        </div>
-      )}
 
       {/* Global Filters */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/20 gap-4">
@@ -722,6 +664,69 @@ export default function Dashboard() {
         
 
 
+      </div>
+
+      <div className="pt-12 border-t border-outline-variant/10 space-y-6">
+        <h3 className="font-headline text-xl font-bold tracking-tight uppercase text-on-surface px-1">Settings & Backup</h3>
+        
+        {/* Migration Notice */}
+        {(migrationStatus?.success === false || recoveryStatus?.success === false) && (
+          <div className="bg-error/10 border border-error/20 p-4 rounded-xl text-error text-xs font-bold flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-sm">error</span>
+              {migrationStatus?.message || recoveryStatus?.message}
+            </div>
+            <button onClick={() => { setMigrationStatus(null); setRecoveryStatus(null); }} className="opacity-50 hover:opacity-100">Dismiss</button>
+          </div>
+        )}
+        
+        {(migrationStatus?.success === true || recoveryStatus?.success === true) && (
+          <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl text-primary text-xs font-bold flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-sm">cloud_done</span>
+              {migrationStatus?.success ? `Successfully migrated ${migrationStatus.count} workouts to the cloud!` : `Successfully recovered ${recoveryStatus.count} workouts from local CSV!`}
+            </div>
+            <button onClick={() => { setMigrationStatus(null); setRecoveryStatus(null); }} className="opacity-50 hover:opacity-100">Dismiss</button>
+          </div>
+        )}
+
+        {/* Manual Sync Trigger (If local data is present) */}
+        {!loading && logs.length > 0 && !migrationStatus && (
+          <div className="bg-primary/5 border border-primary/10 p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
+             <div>
+               <h4 className="font-headline text-lg font-bold uppercase text-on-surface">Cloud Migration</h4>
+               <p className="text-primary/60 text-[10px] font-bold uppercase tracking-widest mt-1">Found {logs.length} local logs. Upload them to Supabase for mobile sync?</p>
+             </div>
+             <button 
+               onClick={async () => {
+                 const res = await migrateToCloud();
+                 setMigrationStatus(res);
+               }}
+               className="bg-primary text-on-primary px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-primary-container transition-all"
+             >
+               Sync Local Data to Cloud
+             </button>
+          </div>
+        )}
+
+        {/* Recovery Trigger (If dashboard is empty) */}
+        {!loading && logs.length === 0 && !recoveryStatus && (
+          <div className="bg-secondary/5 border border-secondary/10 p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
+             <div>
+               <h4 className="font-headline text-lg font-bold uppercase text-on-surface">Data Recovery</h4>
+               <p className="text-secondary/60 text-[10px] font-bold uppercase tracking-widest mt-1">Cloud is empty. Pull your history from the local CSV file?</p>
+             </div>
+             <button 
+               onClick={async () => {
+                 const res = await fetchLocalCSV();
+                 setRecoveryStatus(res);
+               }}
+               className="bg-secondary text-on-secondary px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all"
+             >
+               Recover History from CSV
+             </button>
+          </div>
+        )}
       </div>
     </div>
   );
