@@ -25,7 +25,7 @@ const NavItem = ({ to, icon, label, path }) => {
   );
 };
 
-export function BottomNav() {
+export default function BottomNav() {
   const location = useLocation();
   const path = location.pathname;
 
