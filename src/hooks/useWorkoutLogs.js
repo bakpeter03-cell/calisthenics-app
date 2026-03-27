@@ -6,7 +6,19 @@ const LOCAL_API_URL = 'http://localhost:3001/api/logs';
 export function useWorkoutLogs() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(localStorage.getItem('cali_profile') || 'Guest');
+  const [profile, setProfile] = useState(() => {
+    const saved = localStorage.getItem('cali_profile');
+    if (saved) return saved;
+    
+    // Auto-migrate legacy data to Guest profile for the first time
+    const legacy = localStorage.getItem('cali_logs');
+    if (legacy && !localStorage.getItem('cali_logs_Guest')) {
+      localStorage.setItem('cali_logs_Guest', legacy);
+      localStorage.setItem('cali_profile', 'Guest');
+      return 'Guest';
+    }
+    return 'Guest';
+  });
 
   const fetchLogs = async (profileName = profile) => {
     setLoading(true);

@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import PulseTimer from '../components/PulseTimer';
+import { useTimer } from '../contexts/TimerContext';
 import { getExerciseMeta } from '../utils/exerciseMap';
 
 const EXERCISES = {
@@ -40,6 +41,7 @@ export default function AddWorkout() {
   const [reps, setReps] = useState('');
   const [hold, setHold] = useState('');
   const [rest, setRest] = useState('0'); // Target rest for the next set
+
 
   const getTargetRest = (ex) => {
     const userPref = localStorage.getItem(`cali_prefer_rest_${ex}`);
