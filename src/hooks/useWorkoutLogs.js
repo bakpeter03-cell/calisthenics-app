@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../utils/supabaseClient';
 
+const LOCAL_API_URL = 'http://localhost:3001/api/logs';
+
 export function useWorkoutLogs() {
   const [logs, setLogs] = useState(() => {
     try {
@@ -24,10 +26,40 @@ export function useWorkoutLogs() {
 
       if (error) throw error;
       
-      setLogs(data || []);
-      localStorage.setItem('cali_logs', JSON.stringify(data || []));
+      // CRITICAL FIX: Only overwrite local storage if cloud has data
+      // This prevents wiping local history before migration!
+      if (data && data.length > 0) {
+        setLogs(data);
+        localStorage.setItem('cali_logs', JSON.stringify(data));
+      } else if (data && data.length === 0) {
+        // Cloud is empty, but we don't wipe local logs yet.
+        // We let the UI handle the migration.
+        console.log("Cloud is empty. Keeping local logs for migration.");
+      }
     } catch (err) {
       console.warn("Supabase fetch failed. Using local cache.", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // One-time utility to pull from the local development server (CSV)
+  const fetchLocalCSV = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(LOCAL_API_URL);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setLogs(data);
+          localStorage.setItem('cali_logs', JSON.stringify(data));
+          return { success: true, count: data.length };
+        }
+        return { success: false, message: "Local CSV is empty." };
+      }
+      return { success: false, message: "Local server (port 3001) not reachable." };
+    } catch (err) {
+      return { success: false, message: "Local server offline." };
     } finally {
       setLoading(false);
     }
@@ -102,17 +134,26 @@ export function useWorkoutLogs() {
 
   const migrateToCloud = async () => {
     const localLogs = JSON.parse(localStorage.getItem('cali_logs') || '[]');
-    if (localLogs.length === 0) return { success: true, count: 0 };
+    if (localLogs.length === 0) return { success: false, message: "No local data found to migrate." };
     
     // Check if cloud is already populated to avoid duplicates (naive check)
     const { count } = await supabase.from('workout_logs').select('*', { count: 'exact', head: true });
-    if (count > 0) return { success: false, message: "Cloud already has data. Manual migration skipped." };
+    if (count > 0) return { success: false, message: "Cloud already has data. Migration skipped to prevent duplicates." };
 
     setLoading(true);
     try {
-      const logsToUpload = localLogs.map(({ id, ...rest }) => rest);
+      // Strip local IDs to let Supabase generate UUIDs
+      const logsToUpload = localLogs.map(({ id, ...rest }) => ({
+         ...rest,
+         weight: Number(rest.weight) || 0,
+         reps: Number(rest.reps) || 0,
+         hold_seconds: Number(rest.hold_seconds) || 0,
+         rest: Number(rest.rest) || 0
+      }));
+
       const { error } = await supabase.from('workout_logs').insert(logsToUpload);
       if (error) throw error;
+      
       await fetchLogs();
       return { success: true, count: localLogs.length };
     } catch (err) {
@@ -123,5 +164,5 @@ export function useWorkoutLogs() {
     }
   };
 
-  return { logs, loading, addLog, deleteLog, fetchLogs, migrateToCloud };
+  return { logs, loading, addLog, deleteLog, fetchLogs, migrateToCloud, fetchLocalCSV };
 }
