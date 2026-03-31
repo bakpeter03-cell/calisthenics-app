@@ -131,7 +131,9 @@ export default function AddWorkout() {
     return { date: lastDate, sets: sessionLogs.length, reps: totalReps };
   };
 
-  const targetLogs = logs.filter(l => l.date === date);
+  const targetLogs = logs
+    .filter(l => l.date === date)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
   const groupedTodaysLogs = targetLogs.reduce((acc, log) => {
     if (!acc[log.exercise]) acc[log.exercise] = [];
@@ -313,7 +315,7 @@ export default function AddWorkout() {
                 </div>
                 
                 <div className="flex flex-col space-y-2">
-                  {[...exLogs].reverse().map((log, listIdx) => (
+                  {exLogs.map((log, listIdx) => (
                     <div key={log.id} className="flex justify-between items-center py-3 px-4 bg-white dark:bg-surface-container-low rounded-xl border border-surface-variant/40 group hover:border-secondary/40 transition-colors shadow-sm">
                       {/* SET */}
                       <div className="w-20 text-left">

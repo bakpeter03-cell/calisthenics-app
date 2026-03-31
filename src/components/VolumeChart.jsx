@@ -201,13 +201,6 @@ export default function VolumeChart({ logs = [] }) {
         }
     });
 
-    const frequencyDays = new Set(categoryLogs.filter(l => {
-        const d = new Date(l.date);
-        const limit = new Date();
-        limit.setDate(limit.getDate() - 7);
-        return d >= limit;
-    }).map(l => l.date)).size;
-
     const progressingCount = exercisesWithMeta.filter(ex => ex.velocity > 5).length;
 
     return {
@@ -220,7 +213,6 @@ export default function VolumeChart({ logs = [] }) {
         bestSetEx,
         bestSetVal,
         progressingCount,
-        frequencyDays,
         totalInCat: uniqueExercises.length
       }
     };
@@ -278,38 +270,83 @@ export default function VolumeChart({ logs = [] }) {
         </div>
       ) : (
         <>
-          {/* 4. Metric Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-            <MetricCard
-              label={viewMode === 'volume' ? 'Weekly volume' : (viewMode === 'reps' ? 'Weekly reps' : 'Peak intensity')}
-              value={Math.round(metrics.currentTotal).toLocaleString()}
-              subLine={metrics.currentTotal === 0 ? 'No sessions yet' : `${metrics.delta > 0 ? '+' : ''}${Math.round(metrics.delta)}% vs last week`}
-              context={viewMode === 'volume' ? 'Aim for +3–10%/wk' : (viewMode === 'reps' ? 'Aim for +5–10%/wk' : 'Hardest set this week')}
-              isAlert={Math.abs(metrics.delta) > 5}
-              trend={metrics.delta}
-              hasData={metrics.currentTotal > 0}
-            />
-            <MetricCard
-              label="Best set"
-              value={metrics.bestSetEx === 'No exercises' ? 'None' : metrics.bestSetEx}
-              subLine={`${Math.round(metrics.bestSetVal).toLocaleString()} ${unit}`}
-              context="Highest effort this week"
-              hasData={metrics.bestSetVal > 0}
-            />
-            <MetricCard
-              label="Progressing"
-              value={metrics.progressingCount}
-              subLine={`of ${metrics.totalInCat} trending up`}
-              context="8-week slope, 3wk min"
-              hasData={metrics.totalInCat > 0}
-            />
-            <MetricCard
-              label="Frequency"
-              value={metrics.frequencyDays}
-              subLine="days this week"
-              context="Target: 2–4x/week"
-              hasData={metrics.frequencyDays > 0}
-            />
+          {/* 4. Metric Chips Row */}
+          <style>{`
+            .metric-row {
+              display: flex;
+              gap: 8px;
+              overflow-x: auto;
+              scrollbar-width: none;
+              -webkit-overflow-scrolling: touch;
+              margin-bottom: 8px;
+              padding-bottom: 4px;
+            }
+            .metric-row::-webkit-scrollbar { display: none; }
+            .metric-chip {
+              flex: 0 0 auto;
+              background: var(--color-background-primary, #f8f9fb);
+              border: 1px solid var(--color-border-secondary, #e0e3e5);
+              border-radius: 20px;
+              padding: 8px 14px;
+              display: flex;
+              flex-direction: column;
+              gap: 2px;
+              min-width: 120px;
+              max-width: 180px;
+            }
+          `}</style>
+          
+          <div className="metric-row">
+            {/* Weekly Volume Chip */}
+            <div className="metric-chip">
+              <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #73777f)', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                {viewMode === 'volume' ? 'Weekly volume' : (viewMode === 'reps' ? 'Weekly reps' : 'Peak intensity')}
+              </span>
+              <div style={{ fontSize: '15px', color: 'var(--color-text-primary, #191c1e)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                {metrics.currentTotal === 0 ? (
+                  <span style={{ fontWeight: 400, opacity: 0.5 }}>No sessions yet</span>
+                ) : (
+                  <>
+                    {Math.round(metrics.currentTotal).toLocaleString()}
+                    {metrics.delta !== 0 && (
+                      <span style={{ 
+                        marginLeft: '4px',
+                        color: Math.abs(metrics.delta) <= 5 ? 'var(--color-text-secondary, #73777f)' : (metrics.delta > 0 ? '#1D9E75' : '#E24B4A')
+                      }}>
+                        {metrics.delta > 0 ? '↑' : '↓'} {Math.abs(Math.round(metrics.delta))}%
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Best Set Chip */}
+            <div className="metric-chip">
+              <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #73777f)', fontWeight: 400, whiteSpace: 'nowrap' }}>Best set</span>
+              <div style={{ fontSize: '15px', color: 'var(--color-text-primary, #191c1e)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                {metrics.bestSetVal === 0 ? (
+                  <span style={{ fontWeight: 400, opacity: 0.5 }}>Log a session</span>
+                ) : (
+                   `${metrics.bestSetEx.length > 14 ? metrics.bestSetEx.substring(0, 13) + '…' : metrics.bestSetEx} · ${Math.round(metrics.bestSetVal).toLocaleString()} ${unit}`
+                )}
+              </div>
+            </div>
+
+            {/* Progressing Chip */}
+            <div className="metric-chip">
+              <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #73777f)', fontWeight: 400, whiteSpace: 'nowrap' }}>Progressing</span>
+              <div style={{ fontSize: '15px', color: 'var(--color-text-primary, #191c1e)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                {metrics.totalInCat < 1 ? (
+                  <span style={{ fontWeight: 400, opacity: 0.5 }}>No data</span>
+                ) : (
+                  // Assuming progression check needs at least some data points as per chart logic
+                  exercises.some(ex => ex.dataPoints >= 3) 
+                    ? `${metrics.progressingCount} of ${metrics.totalInCat} exercises`
+                    : <span style={{ fontWeight: 400, opacity: 0.5 }}>Need 3+ weeks</span>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* 5. Chart */}
@@ -443,30 +480,6 @@ export default function VolumeChart({ logs = [] }) {
   );
 }
 
-function MetricCard({ label, value, subLine, context, trend, hasData }) {
-  const isPositive = trend > 5;
-  const isNegative = trend < -5;
-  
-  return (
-    <div className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10 shadow-sm hover:border-outline-variant/30 transition-all group flex flex-col min-h-[160px] h-full">
-      <p className="text-[12px] font-normal text-on-surface-variant/40 mb-2">{label}</p>
-      <div className="flex items-baseline gap-2 mb-2">
-        <span className="text-3xl font-medium text-on-surface tracking-tight group-hover:text-primary transition-colors">{value}</span>
-      </div>
-      <p className={`text-[12px] font-medium leading-tight mb-4 ${
-        !hasData ? 'text-on-surface-variant/40' : 
-        isPositive ? 'text-green-500' : 
-        isNegative ? 'text-error' : 
-        'text-on-surface-variant/40'
-      }`}>
-        {subLine || <span>&nbsp;</span>}
-      </p>
-      <div className="border-t border-outline-variant/10 pt-3 mt-auto">
-        <p className="text-[11px] font-normal text-on-surface-variant/30 leading-snug">{context}</p>
-      </div>
-    </div>
-  );
-}
 
 function ExercisePill({ exercise, active, onClick }) {
   const vel = exercise.velocity;

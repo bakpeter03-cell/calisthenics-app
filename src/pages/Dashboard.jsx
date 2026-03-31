@@ -16,6 +16,19 @@ export default function Dashboard() {
     downloadBackup
   } = useWorkoutLogs();
 
+  const startOfWeek = () => {
+    const d = new Date();
+    const day = d.getDay() || 7;
+    d.setDate(d.getDate() - day + 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const startOfMonth = () => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  };
+
   const [migrationStatus, setMigrationStatus] = useState(null);
   const [dateFilter, setDateFilter] = useState('This Month');
   const [typeFilter, setTypeFilter] = useState('All');
@@ -69,16 +82,50 @@ export default function Dashboard() {
   };
 
   const currentStreak = useMemo(() => {
-    if (!allUniqueDays.includes(getDaysAgoStr(0)) && !allUniqueDays.includes(getDaysAgoStr(1))) return 0;
-    let streak = 0;
-    let offset = allUniqueDays.includes(getDaysAgoStr(0)) ? 0 : 1;
-    while(allUniqueDays.includes(getDaysAgoStr(offset))) {
-      streak++;
-      offset++;
-      if (offset > 365) break; // safety
+    if (!logs || logs.length === 0) return 0;
+    
+    // Step 1: get all unique training dates, sorted newest first
+    const uniqueDates = [...new Set(logs.map(l => l.date))]
+      .sort((a, b) => new Date(b) - new Date(a));
+
+    if (uniqueDates.length === 0) return 0;
+
+    // Step 2: get today's date at midnight, no time component
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Step 3: get the most recent training date at midnight
+    const mostRecentStr = uniqueDates[0];
+    const mostRecent = new Date(mostRecentStr + 'T12:00:00'); // Midday to safety check local date
+    mostRecent.setHours(0, 0, 0, 0);
+
+    // Step 4: how many days ago was the last workout?
+    const daysSinceLast = Math.round((today - mostRecent) / (1000 * 60 * 60 * 24));
+
+    // Step 5: if last workout was 2+ days ago, streak is broken — return 0 immediately
+    if (daysSinceLast > 1) return 0;
+
+    // Step 6: count consecutive days backwards from most recent
+    let streak = 1;
+    for (let i = 1; i < uniqueDates.length; i++) {
+      const prev = new Date(uniqueDates[i - 1] + 'T12:00:00');
+      const curr = new Date(uniqueDates[i] + 'T12:00:00');
+      prev.setHours(0, 0, 0, 0);
+      curr.setHours(0, 0, 0, 0);
+
+      const diff = Math.round((prev - curr) / (1000 * 60 * 60 * 24));
+
+      if (diff === 1) {
+        // Consecutive day — extend streak
+        streak++;
+      } else {
+        // Gap found — stop counting
+        break;
+      }
     }
+
     return streak;
-  }, [allUniqueDays]);
+  }, [logs]);
 
   const heatmapData = useMemo(() => {
     const d = new Date();
@@ -98,14 +145,24 @@ export default function Dashboard() {
 
   // Muscle Balance Radar
   const radarData = useMemo(() => {
-    const balance = { Chest:0, Back:0, Arms:0, Legs:0, Core:0 };
-    activeLogs.forEach(l => { 
-      if(balance[l.muscleGroup] !== undefined) {
-        balance[l.muscleGroup] += (l.reps || 0); 
-      }
+    const RADAR_AXES = ['Push', 'Pull', 'Legs', 'Core'];
+    const sm = startOfMonth();
+    const monthLogs = logs.filter(l => new Date(l.date) >= sm);
+
+    const data = RADAR_AXES.map(axis => {
+      const matchingLogs = monthLogs.filter(l => l.category === axis);
+      const uniqueDays = new Set(matchingLogs.map(l => l.date)).size;
+      return { axis, value: uniqueDays };
     });
-    return Object.keys(balance).map(k => ({ subject: k, reps: balance[k] }));
-  }, [activeLogs]);
+
+    const maxValue = Math.max(...data.map(d => d.value), 1);
+    return data.map(d => ({
+      subject: d.axis,
+      normalized: Math.round((d.value / maxValue) * 100),
+      full: 100,
+      rawValue: d.value
+    }));
+  }, [logs]);
 
   // Personal Bests
   const pbs = useMemo(() => {
@@ -140,18 +197,6 @@ export default function Dashboard() {
     const avg = loggedRest.length ? Math.round(loggedRest.reduce((a,b) => a + (b.restSeconds || 0), 0) / loggedRest.length) : 0;
     return { avg, status: avg > 180 ? 'High' : avg > 140 ? 'Optimal' : 'Low' };
   }, [activeLogs]);
-  // 7. Consistency category frequency
-  const startOfWeek = () => {
-    const d = new Date();
-    const day = d.getDay() || 7;
-    d.setDate(d.getDate() - day + 1);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  };
-  const startOfMonth = () => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1);
-  };
   const categoriesList = ['Push', 'Pull', 'Legs', 'Core'];
 
   const thisWeekFreq = useMemo(() => {
@@ -180,11 +225,11 @@ export default function Dashboard() {
     const sessionLogs = logs.filter(l => l.date === lastSessionDate);
     const lastCategory = sorted[0]?.category || '—';
     
-    // Format date as "27 Mar"
+    // Format date as "27 March"
     let formattedDate = lastSessionDate;
     try {
-      const d = new Date(lastSessionDate);
-      formattedDate = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      const d = new Date(lastSessionDate + 'T12:00:00');
+      formattedDate = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
     } catch(e) {}
 
     return {
@@ -254,7 +299,7 @@ export default function Dashboard() {
         <section className="md:col-span-12 bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 shadow-sm">
            <div className="flex justify-between items-center mb-8">
               <h3 style={{ fontSize: '22px', fontWeight: 700, fontFamily: 'inherit' }} className="font-headline tracking-tighter">Consistency</h3>
-              <div className="px-3 py-1 border border-[#1D9E75]/30 rounded-full text-[12px] font-medium text-[#1D9E75] bg-transparent">7 day streak</div>
+              <div className="px-3 py-1 border border-[#1D9E75]/30 rounded-full text-[12px] font-medium text-[#1D9E75] bg-transparent">{currentStreak} day streak</div>
            </div>
            
            <div className="max-w-sm mx-auto mb-10">
@@ -274,25 +319,70 @@ export default function Dashboard() {
            </div>
 
            <div className="space-y-4 pt-6 border-t border-outline-variant/5">
+              <style>{`
+                .freq-row {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 6px;
+                  margin-bottom: 12px;
+                }
+                .freq-label {
+                  font-size: 12px;
+                  color: var(--color-text-secondary);
+                  font-weight: 500;
+                  white-space: nowrap;
+                }
+                .freq-badges {
+                  display: flex;
+                  gap: 6px;
+                  flex-wrap: nowrap;
+                }
+                .freq-badge {
+                  flex: 1;
+                  text-align: center;
+                  padding: 5px 0;
+                  border-radius: 20px;
+                  font-size: 12px;
+                  font-weight: 600;
+                  border: 1px solid var(--color-border-secondary, #e0e3e5);
+                  white-space: nowrap;
+                }
+                .freq-badge.active {
+                  background: #1D9E75;
+                  color: #ffffff;
+                  border-color: #1D9E75;
+                }
+                .freq-badge.inactive {
+                  background: transparent;
+                  color: var(--color-text-secondary, #73777f);
+                  opacity: 0.4;
+                }
+              `}</style>
+
               {/* Category frequency */}
-              <div className="flex items-center text-[13px] gap-6">
-                <span className="w-24 text-on-surface-variant/60">This week</span>
-                <div className="flex gap-2">
+              <div className="freq-row">
+                <span className="freq-label">This week</span>
+                <div className="freq-badges">
                   {categoriesList.map(cat => (
-                    <div key={cat} className={`px-2 py-0.5 rounded-md flex items-center gap-1.5 min-w-[64px] justify-center ${thisWeekFreq[cat] > 0 ? 'bg-primary/10 text-primary' : 'bg-surface-container-high/50 text-on-surface-variant/20'}`}>
-                      <span className="font-bold">{cat}</span>
-                      <span className="font-medium">{thisWeekFreq[cat]}</span>
+                    <div
+                      key={cat}
+                      className={`freq-badge ${thisWeekFreq[cat] > 0 ? 'active' : 'inactive'}`}
+                    >
+                      {cat} {thisWeekFreq[cat]}
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="flex items-center text-[13px] gap-6">
-                <span className="w-24 text-on-surface-variant/60">This month</span>
-                <div className="flex gap-2">
+
+              <div className="freq-row">
+                <span className="freq-label">This month</span>
+                <div className="freq-badges">
                   {categoriesList.map(cat => (
-                    <div key={cat} className={`px-2 py-0.5 rounded-md flex items-center gap-1.5 min-w-[64px] justify-center ${thisMonthFreq[cat] > 0 ? 'bg-primary/10 text-primary' : 'bg-surface-container-high/50 text-on-surface-variant/20'}`}>
-                      <span className="font-bold">{cat}</span>
-                      <span className="font-medium">{thisMonthFreq[cat]}</span>
+                    <div
+                      key={cat}
+                      className={`freq-badge ${thisMonthFreq[cat] > 0 ? 'active' : 'inactive'}`}
+                    >
+                      {cat} {thisMonthFreq[cat]}
                     </div>
                   ))}
                 </div>
@@ -300,12 +390,32 @@ export default function Dashboard() {
 
               {/* Last workout */}
               {lastWorkoutDetails && (
-                <div className="flex items-center text-[13px] gap-6 pt-2">
-                   <span className="w-24 text-on-surface-variant/60">Last workout</span>
-                   <p className="font-medium text-on-surface">
-                     <span>{lastWorkoutDetails.date} · {lastWorkoutDetails.category} · {lastWorkoutDetails.sets} sets</span>
-                   </p>
-                </div>
+                <>
+                  <style>{`
+                    .last-workout-row {
+                      display: flex;
+                      flex-direction: column;
+                      gap: 6px;
+                      margin-top: 4px;
+                    }
+                    .last-workout-label {
+                      font-size: 12px;
+                      color: var(--color-text-secondary);
+                      font-weight: 500;
+                    }
+                    .last-workout-value {
+                      font-size: 13px;
+                      color: var(--color-text-primary, #191c1e);
+                      font-weight: 600;
+                    }
+                  `}</style>
+                  <div className="last-workout-row">
+                    <span className="last-workout-label">Last workout</span>
+                    <span className="last-workout-value">
+                      {lastWorkoutDetails.date} · {lastWorkoutDetails.category} · {lastWorkoutDetails.sets} sets
+                    </span>
+                  </div>
+                </>
               )}
            </div>
         </section>
@@ -318,7 +428,20 @@ export default function Dashboard() {
                     <RadarChart cx="50%" cy="50%" outerRadius={100} data={radarData}>
                         <PolarGrid stroke="#e0e3e5" />
                         <PolarAngleAxis dataKey="subject" tick={{ fill: '#73777f', fontSize: 11, fontWeight: 600 }} />
-                        <Radar name="Reps" dataKey="reps" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
+                        <Tooltip 
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-white p-3 rounded-xl border border-outline-variant/20 shadow-xl text-xs font-bold text-on-surface">
+                                  {data.subject} — {data.rawValue} days this month
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Radar name="Training Balance" dataKey="normalized" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
                     </RadarChart>
                 </ResponsiveContainer>
             </div>
