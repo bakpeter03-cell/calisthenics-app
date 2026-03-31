@@ -6,7 +6,7 @@ export const EXERCISE_MAP = {
   'Incline Push-up': { bucket: 'Chest', isRepBased: true, isHold: false, defaultRestSeconds: 120 },
   'Archer Push-up': { bucket: 'Chest', isRepBased: true, isHold: false, defaultRestSeconds: 150 },
   'Pike Push-up': { bucket: 'Chest', isRepBased: true, isHold: false, defaultRestSeconds: 150 },
-  'Elevated Pike Pushup': { bucket: 'Chest', isRepBased: true, isHold: false, defaultRestSeconds: 150 },
+  'Elevated Pike Push-up': { bucket: 'Chest', isRepBased: true, isHold: false, defaultRestSeconds: 150 },
   'Handstand Push-up': { bucket: 'Chest', isRepBased: true, isHold: false, defaultRestSeconds: 180 },
 
   // ARMS (Chin-ups/Dips)
@@ -19,7 +19,7 @@ export const EXERCISE_MAP = {
   // BACK (Pull-ups/Rows/FL Raises/Muscle-ups)
   'Pull-up': { bucket: 'Back', isRepBased: true, isHold: false, defaultRestSeconds: 150, pbTarget: 'Pull-up' },
   'Pull-ups': { bucket: 'Back', isRepBased: true, isHold: false, defaultRestSeconds: 150, pbTarget: 'Pull-up' },
-  'L-sit pull-up': { bucket: 'Back', isRepBased: true, isHold: false, defaultRestSeconds: 150, pbTarget: 'Pull-up' },
+  'L-sit Pull-up': { bucket: 'Back', isRepBased: true, isHold: false, defaultRestSeconds: 150, pbTarget: 'Pull-up' },
   'Row': { bucket: 'Back', isRepBased: true, isHold: false, defaultRestSeconds: 150, pbTarget: 'Row' },
   'Rows': { bucket: 'Back', isRepBased: true, isHold: false, defaultRestSeconds: 150, pbTarget: 'Row' },
   'Muscle-up': { bucket: 'Back', isRepBased: true, isHold: false, defaultRestSeconds: 180, pbTarget: 'Muscle-up' },
@@ -47,9 +47,12 @@ export const EXERCISE_MAP = {
 };
 
 export const getExerciseMeta = (exerciseName) => {
-  const name = exerciseName.trim();
+  const name = (exerciseName || '').trim();
+  const clean = (s) => (s || '').toLowerCase().replace(/[ -]/g, '');
+  const searchName = clean(name);
+  
   const meta = EXERCISE_MAP[name] || EXERCISE_MAP[
-    Object.keys(EXERCISE_MAP).find(k => k.toLowerCase() === name.toLowerCase())
+    Object.keys(EXERCISE_MAP).find(k => clean(k) === searchName)
   ];
   
   if (!meta) {

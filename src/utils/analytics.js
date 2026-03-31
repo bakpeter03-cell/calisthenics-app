@@ -30,7 +30,7 @@ export const normalizeLogs = (rawLogs) => {
 
     const repsParser = parseInt(row.reps) || 0;
     const actualReps = repsParser;
-    const actualHold = parseInt(row.hold_seconds || row.hold_seconds === 0 ? row.hold_seconds : row.holdSeconds) || 0;
+    const actualHold = parseInt(row.hold_seconds) || 0;
     const weight = parseFloat(row.weight) || 0;
     
     const restInput = parseInt(row.rest);
@@ -54,7 +54,7 @@ export const normalizeLogs = (rawLogs) => {
       exercise: exName,
       weight,
       reps: actualReps,
-      holdSeconds: actualHold,
+      hold_seconds: actualHold,
       restSeconds,
       isSkill: mappedBucket === 'Skills',
       isHold: meta.isHold,

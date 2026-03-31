@@ -104,7 +104,7 @@ export default function AddWorkout() {
       setExercise(last.exercise);
       setWeight(last.weight === 0 ? '' : String(last.weight));
       setReps(last.reps === 0 ? '' : String(last.reps));
-      const holdRaw = last.hold_seconds || last.holdSeconds || last.hold || 0;
+      const holdRaw = last.hold_seconds || 0;
       setHold(holdRaw === 0 ? '' : String(holdRaw));
       setRest(String(last.rest || 0));
     }
@@ -115,7 +115,7 @@ export default function AddWorkout() {
     setExercise(log.exercise);
     setWeight(log.weight === 0 ? '' : String(log.weight));
     setReps(log.reps === 0 ? '' : String(log.reps));
-    const holdRaw = log.hold_seconds || log.holdSeconds || log.hold || 0;
+    const holdRaw = log.hold_seconds || 0;
     setHold(holdRaw === 0 ? '' : String(holdRaw));
     setRest(String(log.rest || 0));
     deleteLog(log.id);
@@ -255,8 +255,10 @@ export default function AddWorkout() {
 
       <section className="space-y-6 mt-8">
         <div className="flex justify-between items-end px-1 mb-2">
-          <h2 className="font-headline text-3xl font-black text-on-surface tracking-tighter uppercase">{isToday ? "TODAY'S WORKOUT" : "LOGGED FOR " + date.split('-').reverse().join('/')}</h2>
-          <span className="font-bold text-sm text-primary tracking-wide uppercase mb-1">{targetLogs.length} TOTAL</span>
+          <h2 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter text-on-surface">
+            {isToday ? "Today's workout" : "Logged for " + date.split('-').reverse().join('/')}
+          </h2>
+          <span className="font-bold text-sm text-primary tracking-wide uppercase mb-1">{targetLogs.length} total</span>
         </div>
         
         {Object.keys(groupedTodaysLogs).length === 0 ? (

@@ -1,49 +1,41 @@
 import { useState, useMemo } from 'react';
 import { useWorkoutLogs } from '../hooks/useWorkoutLogs';
-import { normalizeLogs, getDateRanges, formatDuration } from '../utils/analytics';
+import { normalizeLogs, getDateRanges } from '../utils/analytics';
 import { EXERCISE_MAP, getExerciseMeta } from '../utils/exerciseMap';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import VolumeChart from '../components/VolumeChart';
 
 export default function Dashboard() {
   const { 
-    logs, 
+    logs = [], 
+    localLogs = [],
     loading, 
     migrateToCloud, 
-    fetchLocalCSV, 
-    profile, 
-    switchProfile 
+    bodyweight = 72,
+    user,
+    downloadBackup
   } = useWorkoutLogs();
 
   const [migrationStatus, setMigrationStatus] = useState(null);
-  const [recoveryStatus, setRecoveryStatus] = useState(null);
-  const [newProfileName, setNewProfileName] = useState('');
-  const [isAddingProfile, setIsAddingProfile] = useState(false);
-
-  const PROFILES = ['Guest', 'User 1', 'User 2']; // Simple defaults or discovered profiles
-  // Actually, let's just allow the user to type a name.
-
-  const handleProfileChange = (e) => {
-    switchProfile(e.target.value);
-  };
- // { success, message }
-  
-  // Normalization
-  const normalizedLogs = useMemo(() => normalizeLogs(logs), [logs]);
-  
-  // Global Filters
   const [dateFilter, setDateFilter] = useState('This Month');
   const [typeFilter, setTypeFilter] = useState('All');
 
+  const displayName = user?.user_metadata?.full_name 
+    || user?.user_metadata?.name 
+    || null;
+
+  const welcomeText = displayName ? `Welcome, ${displayName}` : "Welcome back";
+  
+  // Normalization - ensure we have an array
+  const normalizedLogs = useMemo(() => normalizeLogs(logs || []), [logs]);
+  
   const holdExercises = useMemo(() => Object.keys(EXERCISE_MAP).filter(ex => EXERCISE_MAP[ex].isHold), []);
   const [skillChartEx, setSkillChartEx] = useState(holdExercises[0] || 'Front Lever');
-  
   const [catChartFilter, setCatChartFilter] = useState('Pull');
-  const [selectedEx, setSelectedEx] = useState({}); // { name: boolean }
-  const chartColors = ['#006c49', '#0058be', '#10b981', '#a43a3a', '#fc7c78', '#6ffbbe', '#4edea3', '#adc6ff', '#842225', '#002113'];
+
+  const { currentWeekStart, currentMonthKey, lastWeekStart } = getDateRanges();
   
-  const { currentWeekStart, currentMonthKey, lastWeekStart, lastMonthKey } = getDateRanges();
-  
-  // Active Logs (Date & Type Filtered)
+  // Filtering Logic
   const activeLogs = useMemo(() => {
     return normalizedLogs.filter(log => {
       if (dateFilter === 'This Week' && log.weekStart !== currentWeekStart) return false;
@@ -53,749 +45,404 @@ export default function Dashboard() {
     });
   }, [normalizedLogs, dateFilter, typeFilter, currentWeekStart, currentMonthKey]);
 
-  // Date Only Filter for Muscle Balance
-  const dateOnlyLogs = useMemo(() => {
-    return normalizedLogs.filter(log => {
-      if (dateFilter === 'This Week' && log.weekStart !== currentWeekStart) return false;
-      if (dateFilter === 'This Month' && log.monthKey !== currentMonthKey) return false;
-      return true;
-    });
-  }, [normalizedLogs, dateFilter, currentWeekStart, currentMonthKey]);
-
-  // --- 1. Overview (This Week vs Last Week) ---
+  // Overview Stats
   const ovThisWeekLogs = useMemo(() => normalizedLogs.filter(l => l.weekStart === currentWeekStart), [normalizedLogs, currentWeekStart]);
   const ovLastWeekLogs = useMemo(() => normalizedLogs.filter(l => l.weekStart === lastWeekStart), [normalizedLogs, lastWeekStart]);
   
   const ovThisWeekDays = new Set(ovThisWeekLogs.map(l => l.dayKey)).size;
   const ovLastWeekDays = new Set(ovLastWeekLogs.map(l => l.dayKey)).size;
-  const ovThisWeekReps = ovThisWeekLogs.filter(l => l.isRepBased).reduce((sum, l) => sum + l.reps, 0);
-  const ovLastWeekReps = ovLastWeekLogs.filter(l => l.isRepBased).reduce((sum, l) => sum + l.reps, 0);
-  const ovThisWeekLoad = ovThisWeekLogs.filter(l => l.isRepBased).reduce((sum, l) => sum + l.workload, 0);
-  const ovLastWeekLoad = ovLastWeekLogs.filter(l => l.isRepBased).reduce((sum, l) => sum + l.workload, 0);
+  
+  const ovThisWeekReps = ovThisWeekLogs.filter(l => l.isRepBased).reduce((sum, l) => sum + (l.reps || 0), 0);
+  const ovLastWeekReps = ovLastWeekLogs.filter(l => l.isRepBased).reduce((sum, l) => sum + (l.reps || 0), 0);
+  
+  // Use bodyweight from hook for workload
+  const ovThisWeekLoad = ovThisWeekLogs.filter(l => l.isRepBased).reduce((sum, l) => sum + ((bodyweight + (l.weight || 0)) * (l.reps || 0)), 0);
+  const ovLastWeekLoad = ovLastWeekLogs.filter(l => l.isRepBased).reduce((sum, l) => sum + ((bodyweight + (l.weight || 0)) * (l.reps || 0)), 0);
 
-  const renderBadge = (current, previous) => {
-    return null;
-  };
-
-  // --- 2. Consistency ---
+  // Consistency & Streak
   const allUniqueDays = useMemo(() => [...new Set(normalizedLogs.map(l => l.dayKey))].sort((a,b) => b.localeCompare(a)), [normalizedLogs]);
+  
   const getDaysAgoStr = (days) => {
     const d = new Date();
     d.setDate(d.getDate() - days);
     return d.toISOString().split('T')[0];
   };
 
-  let currentStreak = 0;
-  let lastStreak = 0;
-  let checkDay = -1;
-  if (allUniqueDays.includes(getDaysAgoStr(0))) checkDay = 0;
-  else if (allUniqueDays.includes(getDaysAgoStr(1))) checkDay = 1;
-  else {
-    if (allUniqueDays.length > 0) {
-       const mrDate = new Date(allUniqueDays[0]);
-       lastStreak = 1;
-       let pastD = 1;
-       while (true) {
-         const prev = new Date(mrDate);
-         prev.setDate(prev.getDate() - pastD);
-         if (allUniqueDays.includes(prev.toISOString().split('T')[0])) {
-           lastStreak++; pastD++;
-         } else break;
-       }
+  const currentStreak = useMemo(() => {
+    if (!allUniqueDays.includes(getDaysAgoStr(0)) && !allUniqueDays.includes(getDaysAgoStr(1))) return 0;
+    let streak = 0;
+    let offset = allUniqueDays.includes(getDaysAgoStr(0)) ? 0 : 1;
+    while(allUniqueDays.includes(getDaysAgoStr(offset))) {
+      streak++;
+      offset++;
+      if (offset > 365) break; // safety
     }
-  }
+    return streak;
+  }, [allUniqueDays]);
 
-  if (checkDay !== -1) {
-    currentStreak++;
-    let testOffset = checkDay + 1;
-    while(allUniqueDays.includes(getDaysAgoStr(testOffset))) {
-      currentStreak++;
-      testOffset++;
+  const heatmapData = useMemo(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    const offset = firstDay === 0 ? 6 : firstDay - 1;
+    const data = [];
+    for(let i=0; i<offset; i++) data.push(null);
+    for(let i=1; i<=daysInMonth; i++) {
+        const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+        data.push({ date: dStr, label: i, hasWorkout: allUniqueDays.includes(dStr) });
     }
-  }
+    return data;
+  }, [allUniqueDays]);
 
-  const uniqueDaysThisWeek = new Set(normalizedLogs.filter(l => l.weekStart === currentWeekStart).map(l => l.dayKey)).size;
-  const uniqueDaysThisMonth = new Set(normalizedLogs.filter(l => l.monthKey === currentMonthKey).map(l => l.dayKey)).size;
-
-  const currentMonthDate = new Date();
-  const cmYear = currentMonthDate.getFullYear();
-  const cmMonth = currentMonthDate.getMonth();
-  const daysInMonth = new Date(cmYear, cmMonth + 1, 0).getDate();
-  const firstDay = new Date(cmYear, cmMonth, 1).getDay();
-  const offset = firstDay === 0 ? 6 : firstDay - 1;
-  
-  const heatmapData = [];
-  for(let i=0; i<offset; i++) heatmapData.push(null);
-  for(let i=1; i<=daysInMonth; i++) {
-    const dStr = `${cmYear}-${String(cmMonth+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
-    const hasWorkout = allUniqueDays.includes(dStr);
-    const dayRows = normalizedLogs.filter(l => l.dayKey === dStr).length;
-    heatmapData.push({ date: dStr, label: i, hasWorkout, rows: dayRows });
-  }
-  const totalCells = Math.ceil(heatmapData.length / 7) * 7;
-  while(heatmapData.length < totalCells) heatmapData.push(null);
-
-  // Consistency additions: Category frequency this month & this week
-  const cmLogs = normalizedLogs.filter(l => l.monthKey === currentMonthKey);
-  const cmCatFreq = {};
-  cmLogs.forEach(l => {
-     if (!cmCatFreq[l.mappedBucket]) cmCatFreq[l.mappedBucket] = new Set();
-     cmCatFreq[l.mappedBucket].add(l.dayKey);
-  });
-  const cmCatFreqDisplay = ['Push', 'Pull', 'Legs', 'Core', 'Skills']
-     .map(cat => ({ cat, count: cmCatFreq[cat] ? cmCatFreq[cat].size : 0 }));
-
-  const cwLogs = normalizedLogs.filter(l => l.weekStart === currentWeekStart);
-  const cwCatFreq = {};
-  cwLogs.forEach(l => {
-     if (!cwCatFreq[l.mappedBucket]) cwCatFreq[l.mappedBucket] = new Set();
-     cwCatFreq[l.mappedBucket].add(l.dayKey);
-  });
-  const cwCatFreqDisplay = ['Push', 'Pull', 'Legs', 'Core', 'Skills']
-     .map(cat => ({ cat, count: cwCatFreq[cat] ? cwCatFreq[cat].size : 0 }));
-
-  // --- 3. Total Volume ---
-  const volumeLogs = activeLogs.filter(l => l.isRepBased);
-  const totalReps = volumeLogs.reduce((acc, l) => acc + l.reps, 0);
-  const totalWorkload = volumeLogs.reduce((acc, l) => acc + l.workload, 0);
-  const volUniqueDays = new Set(volumeLogs.map(l => l.dayKey)).size || 1;
-  const avgRepsPerDay = Math.round(totalReps / volUniqueDays);
-  const avgWorkloadPerDay = Math.round(totalWorkload / volUniqueDays);
-
-  // Volume period comparison
-  let prevTotalReps = null;
-  let prevTotalLoad = null;
-  if (dateFilter === 'This Week') {
-    const prevVolLogs = normalizedLogs.filter(l => l.weekStart === lastWeekStart && l.isRepBased && (typeFilter === 'All' || l.type.toLowerCase() === typeFilter.toLowerCase()));
-    prevTotalReps = prevVolLogs.reduce((acc, l) => acc + l.reps, 0);
-    prevTotalLoad = prevVolLogs.reduce((acc, l) => acc + l.workload, 0);
-  } else if (dateFilter === 'This Month') {
-    const prevVolLogs = normalizedLogs.filter(l => l.monthKey === lastMonthKey && l.isRepBased && (typeFilter === 'All' || l.type.toLowerCase() === typeFilter.toLowerCase()));
-    prevTotalReps = prevVolLogs.reduce((acc, l) => acc + l.reps, 0);
-    prevTotalLoad = prevVolLogs.reduce((acc, l) => acc + l.workload, 0);
-  }
-
-  const volCatSplitArr = ['Push', 'Pull', 'Legs', 'Core'].map(cat => {
-    const repSum = volumeLogs.filter(l => l.mappedBucket === cat).reduce((sum, l) => sum + l.reps, 0);
-    return { cat, reps: repSum, pct: totalReps > 0 ? Math.round((repSum / totalReps) * 100) : 0 };
-  });
-
-  // --- 4. Muscle Balance (Raw Reps Only) ---
-  const balance = { Chest:0, Back:0, Arms:0, Legs:0, Core:0 };
-  dateOnlyLogs.forEach(l => {
-    const group = l.muscleGroup;
-    if (balance[group] !== undefined && l.reps > 0) {
-      balance[group] += l.reps;
-    }
-  });
-  const radarData = [
-    { subject: `Chest ${balance.Chest}`, reps: balance.Chest },
-    { subject: `Back ${balance.Back}`, reps: balance.Back },
-    { subject: `Arms ${balance.Arms}`, reps: balance.Arms },
-    { subject: `Legs ${balance.Legs}`, reps: balance.Legs },
-    { subject: `Core ${balance.Core}`, reps: balance.Core },
-  ];
-
-  const mbPushing = balance.Chest + balance.Arms;
-  const mbUpper = balance.Chest + balance.Back + balance.Arms;
-  const mbLower = balance.Legs;
-
-  const validBalanceCats = ['Chest', 'Back', 'Arms', 'Legs', 'Core'];
-  const avgVolAll = totalReps / validBalanceCats.length;
-  let undertrainedWarning = null;
-  if (totalReps > 50) {
-    const lowestCat = validBalanceCats.reduce((a, b) => balance[a] < balance[b] ? a : b);
-    if (balance[lowestCat] === 0) {
-      undertrainedWarning = `${lowestCat} volume is absent in this period.`;
-    } else if (balance[lowestCat] < avgVolAll * 0.25) {
-      undertrainedWarning = `${lowestCat} volume is severely undertrained in this period.`;
-    }
-  }
-  
-  // --- Rest Efficiency ---
-  const restLogs = activeLogs.filter(l => l.restSeconds);
-  const avgRest = restLogs.length ? Math.round(restLogs.reduce((acc, l) => acc + l.restSeconds, 0) / restLogs.length) : null;
-  let restStatus = 'Optimal';
-  let gaugePercent = 0;
-  if (avgRest !== null) {
-     if (avgRest < 150) restStatus = 'Low';
-     else if (avgRest > 180) restStatus = 'High';
-     gaugePercent = Math.min(Math.max((avgRest / 300) * 100, 0), 100);
-  }
-
-  // --- 5. Weekly Activity (Last 7 Days - Bar Chart) ---
-  const last7DaysLogs = normalizedLogs.filter(l => l.isRepBased);
-
-  const last7DaysData = Array.from({length:7}).map((_, i) => {
-    const dStr = getDaysAgoStr(6 - i);
-    const dayMatches = last7DaysLogs.filter(l => l.dayKey === dStr);
-    const reps = dayMatches.reduce((sum, l) => sum + l.reps, 0);
-    return { fullDate: dStr, label: new Date(dStr).toLocaleDateString('en-US', {weekday:'short'}), reps };
-  });
-
-  // --- 6. Skill Progression ---
-  const rawSkillLogs = normalizedLogs.filter(l => l.exercise === skillChartEx && l.isHold);
-  const weeklySkillData = {};
-  rawSkillLogs.forEach(l => {
-    if (!weeklySkillData[l.weekStart]) weeklySkillData[l.weekStart] = { best: 0, sum: 0, count: 0 };
-    weeklySkillData[l.weekStart].best = Math.max(weeklySkillData[l.weekStart].best, l.holdSeconds);
-    weeklySkillData[l.weekStart].sum += l.holdSeconds;
-    weeklySkillData[l.weekStart].count++;
-  });
-  
-  const skillWeeks = Object.keys(weeklySkillData).sort((a,b) => a.localeCompare(b));
-  const last4SkillWeeks = skillWeeks.slice(-4);
-  const skillChartData = last4SkillWeeks.map(w => ({
-    week: w.split('-').slice(1).join('/'),
-    bestHit: weeklySkillData[w].best,
-    average: weeklySkillData[w].count > 0 ? Math.round((weeklySkillData[w].sum / weeklySkillData[w].count) * 10) / 10 : 0
-  }));
-
-  // --- 7. Personal Bests (Strict List) ---
-  const pbConfig = [
-    { name: 'Muscle-up', type: 'reps', unit: 'reps' },
-    { name: 'Front Lever', type: 'hold', unit: 's' },
-    { name: 'Handstand', type: 'hold', unit: 's' },
-    { name: 'L-sit', type: 'hold', unit: 's' }
-  ];
-
-  const pbs = pbConfig.map(cfg => {
-    const exLogs = normalizedLogs.filter(l => {
-      const meta = getExerciseMeta(l.exercise);
-      return (meta.pbTarget || l.exercise).toLowerCase() === cfg.name.toLowerCase();
-    });
-    if (!exLogs.length) return { name: cfg.name, val: 0, unit: cfg.unit, hasData: false };
-    
-    let maxVal = -1;
-    let bestLog = null;
-    exLogs.forEach(l => {
-      const val = cfg.type === 'hold' ? l.holdSeconds : l.reps;
-      if (val > maxVal) {
-        maxVal = val;
-        bestLog = l;
+  // Muscle Balance Radar
+  const radarData = useMemo(() => {
+    const balance = { Chest:0, Back:0, Arms:0, Legs:0, Core:0 };
+    activeLogs.forEach(l => { 
+      if(balance[l.muscleGroup] !== undefined) {
+        balance[l.muscleGroup] += (l.reps || 0); 
       }
     });
+    return Object.keys(balance).map(k => ({ subject: k, reps: balance[k] }));
+  }, [activeLogs]);
 
-    if (!bestLog || maxVal <= 0) return { name: cfg.name, val: 0, unit: cfg.unit, hasData: false };
-
-    return {
-      name: cfg.name,
-      val: maxVal,
-      unit: cfg.unit,
-      hasData: true,
-      achievedDate: bestLog.dayKey
-    };
-  });
-
-  // --- 8. Category Chart (30 Days) ---
-  const last30Days = useMemo(() => {
-    const days = [];
-    for(let i=29; i>=0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      days.push(`${y}-${m}-${day}`);
-    }
-    return days;
-  }, []);
-
-  const CAT_MAP = {
-    Push: ['Push-up', 'Decline Push-up', 'Incline Push-up', 'Dip', 'Straight Bar Dip', 'Pike Push-up', 'Elevated Pike Pushup', 'Handstand Push-up', 'Archer Push-up'],
-    Pull: ['Pull-up', 'Pull-ups', 'L-sit pull-up', 'Chin-up', 'Chin-ups', 'Chinups', 'Row', 'Rows', 'Tucked Front Lever Raise', 'Advanced Tucked Front Lever Raise', 'One-leg Front Lever Raise', 'Front Lever Raise', 'Muscle-up'],
-    Legs: ['Squat', 'Pistol Squat', 'Lunge', 'One-leg Lunge', 'Calf Raise'],
-    Core: ['Knee Raise', 'Toes-to-bar', 'Dragon Flag', 'L-sit']
-  };
-
-  const thirtyDayLogs = useMemo(() => {
-    const validExercises = CAT_MAP[catChartFilter] || [];
-    return normalizedLogs.filter(l => {
-      if (!last30Days.includes(l.dayKey) || !l.isRepBased) return false;
-      return validExercises.some(ex => ex.toLowerCase() === l.exercise.toLowerCase());
+  // Personal Bests
+  const pbs = useMemo(() => {
+    return ['Muscle-up', 'Front Lever', 'Handstand', 'L-sit'].map(name => {
+      const exLogs = normalizedLogs.filter(l => (getExerciseMeta(l.exercise).pbTarget || l.exercise).toLowerCase() === name.toLowerCase());
+      if(!exLogs.length) return { name, val: 0, hasData: false, unit: EXERCISE_MAP[name]?.isHold ? 's' : 'reps' };
+      const max = Math.max(...exLogs.map(l => EXERCISE_MAP[l.exercise]?.isHold ? (l.hold_seconds || 0) : (l.reps || 0)));
+      return { name, val: max > 0 ? max : 0, hasData: max > 0, unit: EXERCISE_MAP[name]?.isHold ? 's' : 'reps' };
     });
-  }, [normalizedLogs, last30Days, catChartFilter]);
+  }, [normalizedLogs]);
 
-  const availableExercises = useMemo(() => {
-    const available = CAT_MAP[catChartFilter] || [];
-    const exCounts = thirtyDayLogs.reduce((acc, l) => {
-      const canonEx = available.find(ex => ex.toLowerCase() === l.exercise.toLowerCase()) || l.exercise;
-      acc[canonEx] = (acc[canonEx] || 0) + l.reps;
+  // Skill Progression
+  const skillChartData = useMemo(() => {
+    const rawSkillLogs = normalizedLogs.filter(l => l.exercise === skillChartEx && l.isHold);
+    const weeklyObj = {};
+    rawSkillLogs.forEach(l => {
+      if (!weeklyObj[l.weekStart]) weeklyObj[l.weekStart] = { best: 0, sum: 0, count: 0 };
+      weeklyObj[l.weekStart].best = Math.max(weeklyObj[l.weekStart].best, l.hold_seconds || 0);
+      weeklyObj[l.weekStart].sum += (l.hold_seconds || 0);
+      weeklyObj[l.weekStart].count++;
+    });
+    return Object.keys(weeklyObj).sort().slice(-4).map(w => ({
+      week: w.split('-').slice(1).join('/'),
+      best: weeklyObj[w].best,
+      avg: Math.round(weeklyObj[w].sum / weeklyObj[w].count) || 0
+    }));
+  }, [normalizedLogs, skillChartEx]);
+
+  // Rest Efficiency
+  const restData = useMemo(() => {
+    const loggedRest = activeLogs.filter(l => (l.restSeconds || 0) > 0);
+    const avg = loggedRest.length ? Math.round(loggedRest.reduce((a,b) => a + (b.restSeconds || 0), 0) / loggedRest.length) : 0;
+    return { avg, status: avg > 180 ? 'High' : avg > 140 ? 'Optimal' : 'Low' };
+  }, [activeLogs]);
+  // 7. Consistency category frequency
+  const startOfWeek = () => {
+    const d = new Date();
+    const day = d.getDay() || 7;
+    d.setDate(d.getDate() - day + 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+  const startOfMonth = () => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  };
+  const categoriesList = ['Push', 'Pull', 'Legs', 'Core'];
+
+  const thisWeekFreq = useMemo(() => {
+    const sw = startOfWeek();
+    const weekLogs = logs.filter(l => new Date(l.date) >= sw);
+    return categoriesList.reduce((acc, cat) => {
+      acc[cat] = new Set(weekLogs.filter(l => l.category === cat).map(l => l.date)).size;
       return acc;
     }, {});
-    return Object.keys(exCounts).sort((a, b) => exCounts[b] - exCounts[a]);
-  }, [thirtyDayLogs, catChartFilter]);
+  }, [logs]);
 
-  const chartExercises = useMemo(() => {
-    return availableExercises.filter(ex => selectedEx[ex] !== false);
-  }, [availableExercises, selectedEx]);
+  const thisMonthFreq = useMemo(() => {
+    const sm = startOfMonth();
+    const monthLogs = logs.filter(l => new Date(l.date) >= sm);
+    return categoriesList.reduce((acc, cat) => {
+      acc[cat] = new Set(monthLogs.filter(l => l.category === cat).map(l => l.date)).size;
+      return acc;
+    }, {});
+  }, [logs]);
 
-  const catChartData = useMemo(() => {
-    return last30Days.map(dateStr => {
-      const dayMatches = thirtyDayLogs.filter(l => l.dayKey === dateStr);
-      const dataObj = { date: dateStr, formattedDate: dateStr.split('-').slice(1).join('/') };
-      chartExercises.forEach(ex => {
-        const repsForEx = dayMatches.filter(l => l.exercise.toLowerCase() === ex.toLowerCase()).reduce((sum, l) => sum + l.reps, 0);
-        dataObj[ex] = repsForEx > 0 ? repsForEx : null; 
-      });
-      return dataObj;
-    });
-  }, [last30Days, thirtyDayLogs, chartExercises]);
+  // 8. Last workout summary
+  const lastWorkoutDetails = useMemo(() => {
+    if (!logs.length) return null;
+    const sorted = [...logs].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const lastSessionDate = sorted[0]?.date;
+    const sessionLogs = logs.filter(l => l.date === lastSessionDate);
+    const lastCategory = sorted[0]?.category || '—';
+    
+    // Format date as "27 Mar"
+    let formattedDate = lastSessionDate;
+    try {
+      const d = new Date(lastSessionDate);
+      formattedDate = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    } catch(e) {}
+
+    return {
+      date: formattedDate,
+      category: lastCategory,
+      sets: sessionLogs.length
+    };
+  }, [logs]);
+
 
   return (
-    <div className="space-y-8">
-
-      {/* Global Filters */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/20 gap-4">
+    <div className="space-y-8 pb-20 animate-in fade-in duration-500">
+      {/* Overview Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant/10 gap-4">
         <div>
-          <h2 className="font-headline text-3xl font-black tracking-tighter text-on-surface">Overview</h2>
-          <p className="text-on-surface-variant font-label text-xs font-bold uppercase tracking-widest mt-1">
-            Total Logs: {normalizedLogs.length}
+          <h2 style={{ fontSize: '28px', fontWeight: 700 }} className="font-headline tracking-tighter text-on-surface">{welcomeText}</h2>
+          <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 400, opacity: 0.6 }}>
+            {logs.length} sessions logged
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-           <select 
-             value={dateFilter} 
-             onChange={e => setDateFilter(e.target.value)} 
-             className="bg-surface-container-low border border-outline-variant/10 rounded-lg text-sm font-black uppercase tracking-widest py-2 pl-4 pr-10 cursor-pointer focus:ring-primary outline-none appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2349454f%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_10px_center] bg-no-repeat transition-all hover:border-primary/30"
-           >
-             <option>This Week</option>
-             <option>This Month</option>
-             <option>All Time</option>
-           </select>
+        <div className="flex gap-2">
+            <select value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="bg-surface border border-outline-variant/10 rounded-xl text-xs font-black uppercase py-2.5 pl-4 pr-10 outline-none focus:ring-2 focus:ring-primary/20">
+              <option>This Week</option>
+              <option>This Month</option>
+              <option>All Time</option>
+            </select>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        
-        {/* 1. Overview (This Week vs Last Week) */}
-        <section className="md:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/20 shadow-sm flex flex-col justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Workout Days</p>
-            <div className="flex items-end gap-2 my-2">
-              <span className="text-4xl font-black text-on-surface leading-none">{ovThisWeekDays}</span>
-              <span className="text-sm font-bold text-on-surface-variant mb-1">/ 7</span>
-              {renderBadge(ovThisWeekDays, ovLastWeekDays)}
-            </div>
-            <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Last Week: {ovLastWeekDays}</p>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        {/* Quick Review Cards */}
+        <section className="md:col-span-12 grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {[
+            { label: 'Workout days', val: ovThisWeekDays, last: ovLastWeekDays },
+            { label: 'Total reps', val: ovThisWeekReps, last: ovLastWeekReps },
+            { label: 'Workload (kg)', val: Math.round(ovThisWeekLoad).toLocaleString(), last: Math.round(ovLastWeekLoad).toLocaleString(), isNum: true }
+          ].map((s, i) => {
+            const current = typeof s.val === 'string' ? parseFloat(s.val.replace(/,/g, '')) : s.val;
+            const previous = typeof s.last === 'string' ? parseFloat(s.last.replace(/,/g, '')) : s.last;
+            const trendArrow = current > previous ? '↑' : current < previous ? '↓' : '→';
+            const trendColor = current > previous ? 'text-[#1D9E75]' : current < previous ? 'text-[#E24B4A]' : 'text-on-surface-variant/40';
 
-          <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/20 shadow-sm flex flex-col justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2 flex justify-between">
-              Total Reps 
-            </p>
-            <div className="flex items-end gap-2 my-2">
-              <span className="text-4xl font-black text-primary leading-none">{ovThisWeekReps}</span>
-              {renderBadge(ovThisWeekReps, ovLastWeekReps)}
-            </div>
-            <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Last Week: {ovLastWeekReps}</p>
-          </div>
+            return (
+              <div key={i} className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/10 shadow-sm flex flex-col justify-between h-40 hover:border-outline-variant/30 transition-colors">
+                  <div>
+                    <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px', opacity: 0.6 }}>
+                      {s.label}
+                    </p>
+                    <p style={{ fontSize: '28px', fontWeight: '600', margin: '0' }} className="text-on-surface">
+                      {s.val}
+                    </p>
+                  </div>
+                  <p style={{ fontSize: '12px', marginTop: '4px' }} className={trendColor}>
+                    {trendArrow} {s.last} last week
+                  </p>
+              </div>
+            );
+          })}
+        </section>
 
-          <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/20 shadow-sm flex flex-col justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2 flex justify-between">
-              Workload 
-            </p>
-            <div className="flex items-end gap-2 my-2">
-              <span className="text-4xl font-black text-secondary leading-none">{ovThisWeekLoad.toLocaleString()}<span className="text-sm ml-1 text-on-surface-variant">kg</span></span>
-              {renderBadge(ovThisWeekLoad, ovLastWeekLoad)}
-            </div>
-            <p className="text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Last Week: {ovLastWeekLoad.toLocaleString()} kg</p>
-          </div>
-        </section>        
-        {/* Category Exercise Progress (30 Days) */}
-        <section className="md:col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/20">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-            <h3 className="font-headline text-2xl font-black tracking-tighter uppercase text-on-surface">Category Progress <span className="text-primary text-lg ml-1">30D</span></h3>
-            
-            <div className="flex flex-wrap items-center gap-6">
-              <select value={catChartFilter} onChange={e => { setCatChartFilter(e.target.value); setSelectedEx({}); }} className="bg-surface border border-outline-variant/20 rounded-lg text-sm font-bold uppercase py-1.5 pl-3 pr-8 focus:ring-primary outline-none appearance-none bg-no-repeat bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2349454f%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_8px_center]">
-                <option value="Push">PUSH</option>
-                <option value="Pull">PULL</option>
-                <option value="Legs">LEGS</option>
-                <option value="Core">CORE</option>
-              </select>
-            </div>
-          </div>
-          
-          <div className="w-full h-[400px] mt-2">
-             {chartExercises.length === 0 ? (
-                <div className="w-full h-full flex flex-col items-center justify-center text-on-surface-variant font-bold text-sm bg-surface rounded-xl border border-dashed border-outline-variant/30">
-                  <span className="material-symbols-outlined text-4xl mb-2 opacity-30">monitoring</span>
-                  No reps logged in the last 30 days.
+        {/* 1. Volume Chart */}
+        <section className="md:col-span-12">
+            <VolumeChart logs={logs} />
+        </section>
+
+        {/* 2. Consistency */}
+        <section className="md:col-span-12 bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 shadow-sm">
+           <div className="flex justify-between items-center mb-8">
+              <h3 style={{ fontSize: '22px', fontWeight: 700, fontFamily: 'inherit' }} className="font-headline tracking-tighter">Consistency</h3>
+              <div className="px-3 py-1 border border-[#1D9E75]/30 rounded-full text-[12px] font-medium text-[#1D9E75] bg-transparent">7 day streak</div>
+           </div>
+           
+           <div className="max-w-sm mx-auto mb-10">
+              {/* Day Labels */}
+              <div className="grid grid-cols-7 gap-1.5 mb-2">
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+                  <div key={d} style={{ textAlign: 'center', fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: 500, opacity: 0.6 }}>
+                    {d}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1.5">
+                {heatmapData.map((d, i) => d ? (
+                  <div key={i} title={d.date} className={`aspect-square rounded-lg flex items-center justify-center text-[11px] font-black transition-all ${d.hasWorkout ? 'bg-primary text-on-primary scale-105 shadow-md shadow-primary/10' : 'bg-surface-container-high text-on-surface-variant/20'}`}>{d.label}</div>
+                ) : <div key={i} className="aspect-square" />)}
+              </div>
+           </div>
+
+           <div className="space-y-4 pt-6 border-t border-outline-variant/5">
+              {/* Category frequency */}
+              <div className="flex items-center text-[13px] gap-6">
+                <span className="w-24 text-on-surface-variant/60">This week</span>
+                <div className="flex gap-2">
+                  {categoriesList.map(cat => (
+                    <div key={cat} className={`px-2 py-0.5 rounded-md flex items-center gap-1.5 min-w-[64px] justify-center ${thisWeekFreq[cat] > 0 ? 'bg-primary/10 text-primary' : 'bg-surface-container-high/50 text-on-surface-variant/20'}`}>
+                      <span className="font-bold">{cat}</span>
+                      <span className="font-medium">{thisWeekFreq[cat]}</span>
+                    </div>
+                  ))}
                 </div>
-             ) : (
-             <ResponsiveContainer width="100%" height="100%">
-               <LineChart data={catChartData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e3e5" />
-                 <XAxis dataKey="formattedDate" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#73777f' }} dy={10} minTickGap={20} />
-                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#73777f' }} />
-                 <Tooltip cursor={{fill: 'rgba(0,0,0,0.05)'}} contentStyle={{ borderRadius: '8px', fontSize: '12px', border: '1px solid #e0e3e5', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', fontWeight: 'bold' }} labelStyle={{ color: '#10b981', marginBottom: '4px' }} />
-                 
-                 {chartExercises.map((ex) => {
-                    const colorIdx = availableExercises.indexOf(ex);
-                    return (
-                      <Line 
-                        key={ex} 
-                        type="linear" 
-                        connectNulls={true} 
-                        dataKey={ex} 
-                        stroke={chartColors[colorIdx % chartColors.length]} 
-                        strokeWidth={3} 
-                        dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} 
-                        activeDot={{ r: 6 }} 
-                      />
-                    );
-                 })}
-               </LineChart>
-             </ResponsiveContainer>
-             )}
-          </div>
-
-          {/* Custom Interactive Legend */}
-          {availableExercises.length > 0 && (
-            <div className="flex flex-wrap gap-x-8 gap-y-4 mt-8 px-4 justify-center border-t border-outline-variant/10 pt-8">
-               {availableExercises.map((ex, idx) => {
-                 const isSelected = selectedEx[ex] !== false;
-                 const color = chartColors[idx % chartColors.length];
-                 return (
-                   <button 
-                     key={ex}
-                     onClick={() => setSelectedEx(prev => ({ ...prev, [ex]: !isSelected }))}
-                     className="flex items-center gap-2.5 group transition-all"
-                   >
-                     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all`} style={{ borderColor: color, backgroundColor: isSelected ? color : 'transparent' }}>
-                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                     </div>
-                     <span className={`text-[10px] font-black uppercase tracking-widest ${isSelected ? 'text-on-surface' : 'text-on-surface-variant opacity-40'}`}>
-                       {ex}
-                     </span>
-                   </button>
-                 );
-               })}
-            </div>
-          )}
-       </section>
-
-        {/* Consistency Heatmap */}
-        <section className="md:col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/20 flex flex-col gap-6">
-          <div className="mb-2">
-            <h3 className="font-headline text-2xl font-black tracking-tighter uppercase text-on-surface">Consistency</h3>
-            <p className="text-on-surface-variant text-sm mt-1 font-bold">
-               {currentStreak > 0 ? `Current Streak: ${currentStreak} days` : `Last Streak: ${lastStreak} days`}
-            </p>
-          </div>
-
-          <div className="flex flex-col lg:flex-row gap-6 items-stretch">
-            {/* THIS WEEK */}
-            <div className="bg-surface flex-1 p-6 rounded-xl border border-outline-variant/20 shadow-sm flex flex-col items-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">This Week</p>
-              <p className="text-5xl font-black text-primary leading-none mb-6">{uniqueDaysThisWeek}</p>
-              
-              <div className="w-full space-y-2 border-t border-outline-variant/10 pt-4">
-                <p className="text-[9px] font-black uppercase tracking-[0.1em] text-on-surface-variant/50 text-center mb-2">By Category</p>
-                {cwCatFreqDisplay.map(c => (
-                  <div key={c.cat} className="flex justify-between items-center group">
-                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{c.cat}</span>
-                    <span className="text-[10px] font-black text-on-surface">{c.count}</span>
-                  </div>
-                ))}
               </div>
-            </div>
-
-            {/* THIS MONTH */}
-            <div className="bg-surface flex-1 p-6 rounded-xl border border-outline-variant/20 shadow-sm flex flex-col items-center">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">This Month</p>
-              <p className="text-5xl font-black text-primary leading-none mb-6">{uniqueDaysThisMonth}</p>
-              
-              <div className="w-full space-y-2 border-t border-outline-variant/10 pt-4">
-                <p className="text-[9px] font-black uppercase tracking-[0.1em] text-on-surface-variant/50 text-center mb-2">By Category</p>
-                {cmCatFreqDisplay.map(c => (
-                  <div key={c.cat} className="flex justify-between items-center group">
-                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{c.cat}</span>
-                    <span className="text-[10px] font-black text-on-surface">{c.count}</span>
-                  </div>
-                ))}
+              <div className="flex items-center text-[13px] gap-6">
+                <span className="w-24 text-on-surface-variant/60">This month</span>
+                <div className="flex gap-2">
+                  {categoriesList.map(cat => (
+                    <div key={cat} className={`px-2 py-0.5 rounded-md flex items-center gap-1.5 min-w-[64px] justify-center ${thisMonthFreq[cat] > 0 ? 'bg-primary/10 text-primary' : 'bg-surface-container-high/50 text-on-surface-variant/20'}`}>
+                      <span className="font-bold">{cat}</span>
+                      <span className="font-medium">{thisMonthFreq[cat]}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            {/* MONTH CALENDAR */}
-            <div className="flex-1 lg:flex-[2] bg-surface-container-low rounded-xl p-6 border border-outline-variant/20 shadow-sm flex flex-col">
-              <p className="text-[11px] font-black uppercase tracking-widest text-on-surface text-center mb-4">
-                 {currentMonthDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-              </p>
-              <div className="w-full grid grid-cols-7 gap-1.5 flex-grow align-middle">
-                 {['M','T','W','T','F','S','S'].map((day, idx) => (
-                   <div key={'h-'+idx} className="text-[10px] font-black text-center text-on-surface-variant/50 uppercase pb-1">{day}</div>
-                 ))}
-                 {heatmapData.map((d, i) => d ? (
-                   <div 
-                     key={i} 
-                     className={`w-full aspect-square rounded flex items-center justify-center text-[10px] font-black transition-all ${d.hasWorkout ? 'bg-primary text-on-primary shadow-sm hover:scale-[1.05]' : 'bg-surface border border-outline-variant/5 text-on-surface-variant/30 hover:bg-surface-container-high'}`}
-                     title={`${d.date} | ${d.hasWorkout ? 'Worked out' : 'Rest'}`}
-                   >
-                     {d.label}
-                   </div>
-                 ) : (
-                   <div key={i} className="w-full aspect-square opacity-0"></div>
-                 ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Muscle Balance using Recharts */}
-        <section className="md:col-span-6 bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/20 flex flex-col items-center justify-between">
-          <div className="w-full mb-2">
-             <h3 className="font-headline text-2xl font-black tracking-tighter uppercase text-center text-on-surface">Muscle Balance</h3>
-             <p className="text-[10px] text-on-surface-variant uppercase font-bold tracking-widest text-center mt-1">Based on total reps</p>
-          </div>
-          
-          <div className="w-full h-[450px] mt-2 px-4 text-center">
-             <ResponsiveContainer width="100%" height="100%">
-               <RadarChart cx="50%" cy="50%" outerRadius="50%" margin={{ top: 10, right: 10, bottom: 10, left: 10 }} data={radarData}>
-                 <PolarGrid stroke="#e0e3e5" />
-                 <PolarAngleAxis dataKey="subject" tick={{ fill: '#49454f', fontSize: 10, fontWeight: 900 }} />
-                 <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
-                 <Radar name="Reps" dataKey="reps" stroke="#10b981" fill="#10b981" fillOpacity={0.4} />
-                 <Tooltip cursor={{fill: 'rgba(0,0,0,0.05)'}} contentStyle={{ borderRadius: '8px', fontSize: '12px', border: '1px solid #e0e3e5', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
-               </RadarChart>
-             </ResponsiveContainer>
-          </div>
-
-          <div className="w-full mt-4 flex flex-col gap-4">
-             {undertrainedWarning && (
-               <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg text-xs font-bold text-center flex items-center justify-center gap-2">
-                 <span className="material-symbols-outlined text-sm">warning</span>
-                 {undertrainedWarning}
-               </div>
-             )}
-          </div>
-        </section>
-
-        {/* Weekly Activity BarChart */}
-        <section className="md:col-span-6 bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/20 flex flex-col">
-          <div className="mb-4">
-            <h3 className="font-headline text-2xl font-black tracking-tighter uppercase text-on-surface">Last 7 Days</h3>
-            <p className="text-on-surface-variant text-sm mt-1 font-bold">Total reps per calendar day</p>
-          </div>
-          <div className="w-full h-56 mt-4 flex-1">
-             <ResponsiveContainer width="100%" height="100%">
-               <BarChart data={last7DaysData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e3e5" />
-                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#73777f' }} dy={10} />
-                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#73777f' }} />
-                 <Tooltip cursor={{fill: 'rgba(0,0,0,0.05)'}} contentStyle={{ borderRadius: '8px', fontSize: '12px', border: '1px solid #e0e3e5', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
-                 <Bar name="Total Reps" dataKey="reps" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
-               </BarChart>
-             </ResponsiveContainer>
-          </div>
-        </section>
-
-        {/* Personal Bests */}
-        <section className="md:col-span-7 bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/20">
-           <h3 className="font-headline text-2xl font-black tracking-tighter uppercase text-on-surface mb-8">Personal Bests</h3>
-           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
-              {pbs.map(pb => (
-                 <div key={pb.name} className="bg-surface p-8 rounded-2xl border border-outline-variant/20 shadow-sm flex flex-col items-center justify-center text-center group hover:border-primary/30 transition-all hover:shadow-md h-full">
-                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-on-surface-variant/60 mb-6">{pb.name}</p>
-                    {pb.hasData ? (
-                       <>
-                          <div className="flex items-baseline gap-1.5 mb-4">
-                             <span className="text-5xl font-black text-primary tracking-tighter leading-none">{pb.val}</span>
-                             <span className="text-sm font-black uppercase tracking-widest text-on-surface-variant/40">{pb.unit}</span>
-                          </div>
-                          <p className="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-widest mt-2">Achieved {pb.achievedDate}</p>
-                       </>
-                    ) : (
-                       <div className="py-4">
-                          <span className="text-[11px] font-black uppercase tracking-widest text-on-surface-variant/20">No data yet</span>
-                       </div>
-                    )}
-                 </div>
-              ))}
+              {/* Last workout */}
+              {lastWorkoutDetails && (
+                <div className="flex items-center text-[13px] gap-6 pt-2">
+                   <span className="w-24 text-on-surface-variant/60">Last workout</span>
+                   <p className="font-medium text-on-surface">
+                     <span>{lastWorkoutDetails.date} · {lastWorkoutDetails.category} · {lastWorkoutDetails.sets} sets</span>
+                   </p>
+                </div>
+              )}
            </div>
         </section>
 
-        {/* Rest Efficiency */}
-        <section className="md:col-span-5 bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/20">
-          <div className="flex justify-between items-start mb-6 text-on-surface">
-            <div>
-              <h3 className="font-headline text-xl font-bold tracking-tight uppercase">Rest Efficiency</h3>
-              <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mt-1">150s - 180s optimal</p>
+        {/* 3. Muscle Balance Radar */}
+        <section className="md:col-span-12 bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 shadow-sm flex flex-col items-center">
+            <h3 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter w-full text-left mb-6">Muscle balance</h3>
+            <div className="w-full h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius={100} data={radarData}>
+                        <PolarGrid stroke="#e0e3e5" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#73777f', fontSize: 11, fontWeight: 600 }} />
+                        <Radar name="Reps" dataKey="reps" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
+                    </RadarChart>
+                </ResponsiveContainer>
             </div>
-            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest ${avgRest === null ? 'bg-surface-variant text-on-surface-variant' : restStatus === 'Optimal' ? 'bg-primary/20 text-primary' : 'bg-error/10 text-error'}`}>
-               {restStatus}
-            </span>
-          </div>
-          <div className="mt-8 relative pt-4 pb-2">
-             <div className="h-4 w-full bg-surface-container-highest rounded-full overflow-hidden flex">
-                <div className="h-full bg-primary/20" style={{width: '50%'}}></div> {/* 0-150s */}
-                <div className="h-full bg-primary" style={{width: '10%'}}></div>    {/* 150-180s */}
-                <div className="h-full bg-error/40" style={{width: '40%'}}></div>   {/* 180-300s */}
-             </div>
-             {avgRest !== null && (
-               <div className="absolute top-0 w-1 h-8 bg-on-surface rounded transform -translate-x-1/2 transition-all" style={{left: `${gaugePercent}%`}}></div>
-             )}
-          </div>
-          <div className="flex justify-between text-[10px] font-bold text-on-surface-variant mt-2">
-            <span>0s</span>
-            <span>150s</span>
-            <span>180s</span>
-            <span>300s+</span>
-          </div>
-          <p className="text-center font-black text-2xl tracking-tighter mt-4 text-on-surface">{avgRest !== null ? `${avgRest}s avg` : 'No data'}</p>
         </section>
 
-        {/* Skill Progression LineChart */}
-        <section className="md:col-span-12 bg-surface-container-lowest rounded-xl p-8 shadow-sm border border-outline-variant/20">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="font-headline text-xl font-bold tracking-tight uppercase text-on-surface">Skill Progression</h3>
-              <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mt-1">Weekly hold metrics (s)</p>
+        {/* 4. Skill Progression */}
+        <section className="md:col-span-12 bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 shadow-sm">
+            <div className="flex justify-between items-center mb-8">
+                <h3 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter">Skills</h3>
+                <select value={skillChartEx} onChange={e => setSkillChartEx(e.target.value)} className="bg-surface border border-outline-variant/10 rounded-xl text-[10px] font-black uppercase px-4 py-2 outline-none focus:ring-2 focus:ring-primary/20">
+                    {holdExercises.map(ex => <option key={ex}>{ex}</option>)}
+                </select>
             </div>
-            <select 
-              value={skillChartEx} 
-              onChange={e => setSkillChartEx(e.target.value)} 
-              className="bg-surface border border-outline-variant/20 rounded-lg text-xs font-black uppercase py-2 pl-3 pr-9 focus:ring-primary outline-none text-on-surface appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2349454f%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[position:right_8px_center] bg-no-repeat"
-            >
-              {holdExercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
-            </select>
-          </div>
-          
-          {skillChartData.length === 0 ? (
-            <p className="text-center text-sm font-bold text-on-surface-variant py-8">No data available for {skillChartEx}</p>
-          ) : (
-            <div className="w-full h-56 mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                 <LineChart data={skillChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e3e5" />
-                   <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#73777f' }} dy={10} />
-                   <YAxis label={{ value: 'Hold (sec)', angle: -90, position: 'insideLeft', offset: -5, style: { fontSize: '10px', fontWeight: 'bold', fill: '#73777f' } }} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#73777f' }} />
-                   <Tooltip cursor={{fill: 'rgba(0,0,0,0.05)'}} contentStyle={{ borderRadius: '8px', fontSize: '12px', border: '1px solid #e0e3e5', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
-                   <Line type="monotone" dataKey="bestHit" name="Best (sec)" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: '#10b981' }} activeDot={{ r: 6 }} />
-                   <Line type="monotone" dataKey="average" name="Avg (sec)" stroke="#10b981" strokeWidth={2} strokeDasharray="4 4" dot={false} opacity={0.5} />
-                 </LineChart>
-              </ResponsiveContainer>
+            <div className="h-64 w-full">
+                {skillChartData.length === 0 ? (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '160px',
+                    color: 'var(--color-text-secondary)',
+                    fontSize: '13px',
+                    textAlign: 'center',
+                    gap: '8px'
+                  }}>
+                    <span style={{ fontSize: '24px' }}>—</span>
+                    <p style={{ margin: 0 }}>No skill holds logged yet</p>
+                    <p style={{ margin: 0, fontSize: '11px' }}>Log an L-sit, planche, or handstand hold to see your progress here</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={skillChartData}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e3e5" />
+                          <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#73777f' }} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#73777f' }} />
+                          <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                          <Line type="stepAfter" dataKey="best" name="Weekly Best" stroke="#10b981" strokeWidth={5} dot={{ r: 6, fill: '#10b981' }} />
+                          <Line type="monotone" dataKey="avg" name="Weekly Avg" stroke="#73777f" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                      </LineChart>
+                  </ResponsiveContainer>
+                )}
             </div>
-          )}
         </section>
-        
 
+        {/* 5. Personal Bests Grid */}
+        <section className="md:col-span-7 bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 shadow-sm">
+            <h3 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter mb-8">Personal bests</h3>
+            <div className="grid grid-cols-2 gap-4">
+                {pbs.map(pb => (
+                    <div key={pb.name} className={`p-6 rounded-3xl border transition-all ${pb.hasData ? 'bg-primary/5 border-primary/10' : 'bg-surface border-outline-variant/5 opacity-50'}`}>
+                        <p className="text-[10px] font-black uppercase text-on-surface-variant/40 mb-4 tracking-widest">{pb.name}</p>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-4xl font-black text-primary tracking-tighter">{pb.val || 0}</span>
+                            <span className="text-[10px] font-black uppercase text-on-surface-variant/20 tracking-widest">{pb.unit}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </section>
+
+        {/* 6. Rest Efficiency Gauge */}
+        <section className="md:col-span-5 bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 shadow-sm flex flex-col justify-between">
+            <div>
+                <h3 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter mb-1">Rest</h3>
+                <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest opacity-40">Average set recovery</p>
+            </div>
+            <div className="py-10 text-center">
+                <p className="text-6xl font-black text-on-surface tracking-tighter leading-none">{restData.avg || 0}s</p>
+                <div className={`mt-6 inline-block px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${restData.status === 'Optimal' ? 'bg-green-500 text-white' : 'bg-orange-500 text-white'}`}>
+                    {restData.status} Efficiency
+                </div>
+            </div>
+            <p className="text-[9px] font-bold text-center text-on-surface-variant/30 uppercase px-4 leading-relaxed">
+              Target rest between 120s and 180s for maximum strength gains during rep training.
+            </p>
+        </section>
 
       </div>
 
-      <div className="pt-12 border-t border-outline-variant/10 space-y-6">
-        <h3 className="font-headline text-xl font-bold tracking-tight uppercase text-on-surface px-1">Settings & Backup</h3>
+      {/* Settings Footer */}
+      <footer className="pt-20 space-y-8">
+        <div className="h-px bg-outline-variant/10 w-full" />
         
-        {/* Profile Switcher */}
-        <div className="bg-surface-container-low p-6 rounded-xl border border-outline-variant/10 shadow-sm space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h4 className="font-headline text-lg font-bold uppercase text-on-surface">User Profile</h4>
-              <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest mt-1">Separate your data from other users</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-surface-container-low p-8 rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col justify-between">
+                <div>
+                   <h4 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter mb-1">Identity</h4>
+                   <p style={{ fontSize: '13px', fontWeight: 400, opacity: 0.7 }} className="text-on-surface-variant">Connected as: <span className="font-normal">{user?.email}</span></p>
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 400, opacity: 0.6 }} className="mt-8 text-on-surface-variant leading-relaxed tracking-tight">
+                    Your training data is synced to your account.
+                </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-black text-primary bg-primary/10 px-3 py-1.5 rounded-lg uppercase tracking-wider">{profile}</span>
-              <button 
-                onClick={() => setIsAddingProfile(!isAddingProfile)}
-                className="text-on-surface-variant hover:text-primary transition-colors"
-              >
-                <span className="material-symbols-outlined text-lg">{isAddingProfile ? 'close' : 'edit'}</span>
-              </button>
-            </div>
-          </div>
 
-          {isAddingProfile && (
-            <div className="flex gap-2 animate-in fade-in slide-in-from-top-2">
-              <input 
-                type="text"
-                placeholder="Enter profile name (e.g. Peter)"
-                value={newProfileName}
-                onChange={(e) => setNewProfileName(e.target.value)}
-                className="flex-1 bg-surface border border-outline-variant/20 rounded-xl px-4 py-2 text-sm font-bold text-on-surface focus:ring-1 focus:ring-primary outline-none"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newProfileName.trim()) {
-                    switchProfile(newProfileName.trim());
-                    setNewProfileName('');
-                    setIsAddingProfile(false);
-                  }
-                }}
-              />
-              <button 
-                onClick={() => {
-                  if (newProfileName.trim()) {
-                    switchProfile(newProfileName.trim());
-                    setNewProfileName('');
-                    setIsAddingProfile(false);
-                  }
-                }}
-                className="bg-primary text-on-primary px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20"
-              >
-                Switch
-              </button>
+            <div className="bg-surface-container-low p-8 rounded-3xl border border-outline-variant/10 shadow-sm flex flex-col justify-between">
+                <div>
+                   <h4 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter mb-1">Data library</h4>
+                   <p className="text-on-surface-variant text-[10px] font-bold uppercase tracking-widest opacity-40">Download your full history</p>
+                </div>
+                <button onClick={downloadBackup} disabled={logs.length === 0} className="mt-8 w-full bg-surface border border-outline-variant/20 py-4 rounded-2xl text-xs font-black uppercase flex items-center justify-center gap-3 hover:bg-surface-container-high transition-all disabled:opacity-30">
+                    <span className="material-symbols-outlined">download</span>
+                    Export Backup (.csv)
+                </button>
             </div>
-          )}
         </div>
 
-        {/* Migration Notice */}
-        {(migrationStatus?.success === false || recoveryStatus?.success === false) && (
-          <div className="bg-error/10 border border-error/20 p-4 rounded-xl text-error text-xs font-bold flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-sm">error</span>
-              {migrationStatus?.message || recoveryStatus?.message}
-            </div>
-            <button onClick={() => { setMigrationStatus(null); setRecoveryStatus(null); }} className="opacity-50 hover:opacity-100">Dismiss</button>
-          </div>
-        )}
-        
-        {(migrationStatus?.success === true || recoveryStatus?.success === true) && (
-          <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl text-primary text-xs font-bold flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-sm">cloud_done</span>
-              {migrationStatus?.success ? `Successfully migrated ${migrationStatus.count} workouts to the cloud!` : `Successfully recovered ${recoveryStatus.count} workouts from local CSV!`}
-            </div>
-            <button onClick={() => { setMigrationStatus(null); setRecoveryStatus(null); }} className="opacity-50 hover:opacity-100">Dismiss</button>
+        {/* Cloud Migration */}
+        {localLogs.length > 0 && !migrationStatus && (
+          <div className="bg-primary/5 border-2 border-dashed border-primary/20 p-10 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-8 animate-pulse text-center md:text-left">
+             <div className="max-w-md">
+               <h4 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter text-primary">Found offline data</h4>
+               <p className="text-on-surface-variant/60 text-xs font-bold leading-relaxed mt-2 tracking-wide">You have {localLogs.length} workouts stored in this browser that haven't been secured to your account. Sync them to the cloud now.</p>
+             </div>
+             <button onClick={async () => { const res = await migrateToCloud(); setMigrationStatus(res); }} className="bg-primary hover:bg-primary-container text-on-primary px-10 py-5 rounded-3xl text-sm font-black uppercase tracking-widest shadow-2xl shadow-primary/20 transition-all hover:scale-[1.05] whitespace-nowrap">Sync to Cloud</button>
           </div>
         )}
 
-        {/* Manual Sync Trigger (If local data is present) */}
-        {!loading && logs.length > 0 && !migrationStatus && (
-          <div className="bg-primary/5 border border-primary/10 p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
-             <div>
-               <h4 className="font-headline text-lg font-bold uppercase text-on-surface">Cloud Migration</h4>
-               <p className="text-primary/60 text-[10px] font-bold uppercase tracking-widest mt-1">Found {logs.length} local logs. Upload them to Supabase for mobile sync?</p>
-             </div>
-             <button 
-               onClick={async () => {
-                 const res = await migrateToCloud();
-                 setMigrationStatus(res);
-               }}
-               className="bg-primary text-on-primary px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-primary-container transition-all"
-             >
-               Sync Local Data to Cloud
-             </button>
+        {migrationStatus?.success && (
+          <div className="bg-primary p-8 rounded-3xl text-on-primary text-sm font-black text-center shadow-xl shadow-primary/20">
+             ⚡️ SUCCESSFULLY CONFIGURED {migrationStatus.count} WORKOUTS
           </div>
         )}
-
-        {/* Recovery Trigger (If dashboard is empty) */}
-        {!loading && logs.length === 0 && !recoveryStatus && (
-          <div className="bg-secondary/5 border border-secondary/10 p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
-             <div>
-               <h4 className="font-headline text-lg font-bold uppercase text-on-surface">Data Recovery</h4>
-               <p className="text-secondary/60 text-[10px] font-bold uppercase tracking-widest mt-1">Cloud is empty. Pull your history from the local CSV file?</p>
-             </div>
-             <button 
-               onClick={async () => {
-                 const res = await fetchLocalCSV();
-                 setRecoveryStatus(res);
-               }}
-               className="bg-secondary text-on-secondary px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all"
-             >
-               Recover History from CSV
-             </button>
-          </div>
-        )}
-      </div>
+      </footer>
     </div>
   );
 }

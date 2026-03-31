@@ -40,17 +40,17 @@ Vercel needs to know how to connect to your database.
 If you got an error before, please copy and run this **corrected** code in the Supabase SQL Editor:
 
 ```sql
-create table workout_logs (
-  id uuid default gen_random_uuid() primary key,
-  created_at timestamptz default now(),
-  date date not null,
-  category text not null,
-  exercise text not null,
-  set integer not null default 1,
-  reps integer not null default 0,
-  weight float8 not null default 0,
-  rest integer not null default 0,
-  hold_seconds integer not null default 0
+CREATE TABLE workout_logs (
+  id BIGINT PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  date DATE NOT NULL,
+  exercise TEXT NOT NULL,
+  category TEXT,
+  weight FLOAT DEFAULT 0,
+  reps INTEGER DEFAULT 0,
+  hold_seconds INTEGER DEFAULT 0,
+  rest INTEGER DEFAULT 0,
+  profile_name TEXT DEFAULT 'Guest'
 );
 alter table workout_logs disable row level security;
 ```
