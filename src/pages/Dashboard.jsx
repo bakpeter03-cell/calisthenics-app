@@ -327,18 +327,18 @@ export default function Dashboard() {
         <section className="md:col-span-12 bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 shadow-sm">
             <div style={{ marginBottom: '16px' }}>
                 {/* Row 1: Title + navigation */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <h3 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Consistency</h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Consistency</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                         <button
                             onClick={() => {
                                 if (calendarMonth === 0) { setCalendarMonth(11); setCalendarYear(y => y - 1); }
                                 else setCalendarMonth(m => m - 1);
                             }}
-                            style={{ background: 'none', border: '1px solid var(--color-border-secondary, #e0e3e5)', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '16px', color: 'var(--color-text-secondary, #73777f)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ background: 'none', border: '1px solid rgba(0,0,0,0.15)', borderRadius: '8px', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                         >‹</button>
-                        <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '90px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            {new Date(calendarYear, calendarMonth).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+                        <span style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', color: 'var(--color-text-primary)' }}>
+                            {new Date(calendarYear, calendarMonth).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
                         </span>
                         <button
                             onClick={() => {
@@ -346,65 +346,74 @@ export default function Dashboard() {
                                 else setCalendarMonth(m => m + 1);
                             }}
                             disabled={isCurrentMonth}
-                            style={{ background: 'none', border: '1px solid var(--color-border-secondary, #e0e3e5)', borderRadius: '8px', width: '32px', height: '32px', cursor: isCurrentMonth ? 'default' : 'pointer', fontSize: '16px', color: 'var(--color-text-secondary, #73777f)', opacity: isCurrentMonth ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ background: 'none', border: '1px solid rgba(0,0,0,0.15)', borderRadius: '8px', width: '28px', height: '28px', cursor: isCurrentMonth ? 'default' : 'pointer', fontSize: '14px', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: isCurrentMonth ? 0.3 : 1 }}
                         >›</button>
                     </div>
                 </div>
 
                 {/* Row 2: Streak badge */}
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <div style={{ whiteSpace: 'nowrap', color: '#016c48', border: '1px solid #016c48', background: 'rgba(1,108,72,0.08)', borderRadius: '9999px', padding: '4px 12px', fontSize: '12px', fontWeight: 500, marginRight: '8px' }}>
+                    <div style={{ display: 'inline-flex', whiteSpace: 'nowrap', color: '#016c48', border: '1px solid #016c48', background: 'rgba(1,108,72,0.08)', borderRadius: '9999px', padding: '4px 12px', fontSize: '12px', fontWeight: 500, marginRight: '8px' }}>
                         {currentStreak} day{currentStreak !== 1 ? 's' : ''} streak
                     </div>
                 </div>
             </div>
            
-           <div className="max-w-sm mx-auto mb-10">
-              {/* Day Labels */}
-              <div className="grid grid-cols-7 gap-1.5 mb-2">
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-                  <div key={d} style={{ textAlign: 'center', fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: 500, opacity: 0.6 }}>
-                    {d}
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1.5">
-                {heatmapData.map((d, i) => {
-                  if (!d) return <div key={i} className="aspect-square" />;
-                  
-                  const todayDay = new Date().getDate();
-                  const isToday = isCurrentMonth && d.label === todayDay;
-                  const isTrained = d.hasWorkout;
-                  
-                  // Background priority: today > trained > untrained
-                  const cellBackground = isToday
-                    ? 'rgba(1, 108, 72, 0.2)' // light green tint
-                    : isTrained
-                    ? '#016c48' // primary green
-                    : '#E8E8E8'; // inactive gray
+            <div style={{ width: '100%', marginBottom: '40px' }}>
+               {/* Day Labels */}
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px' }}>
+                 {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+                   <div key={d} style={{ textAlign: 'center', fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: 500, opacity: 0.6 }}>
+                     {d}
+                   </div>
+                 ))}
+               </div>
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', width: '100%' }}>
+                 {heatmapData.map((d, i) => {
+                   if (!d) return <div key={i} style={{ aspectRatio: '1' }} />;
+                   
+                   const todayDay = new Date().getDate();
+                   const isToday = isCurrentMonth && d.label === todayDay;
+                   const isTrained = d.hasWorkout;
+                   
+                   // Background priority: today > trained > untrained
+                   const cellBackground = isToday
+                     ? 'rgba(1, 108, 72, 0.2)' // light green tint
+                     : isTrained
+                     ? '#016c48' // primary green
+                     : '#E8E8E8'; // inactive gray
 
-                  const cellTextColor = (isToday && !isTrained)
-                    ? '#016c48' // green text on tint
-                    : isTrained
-                    ? '#ffffff'
-                    : 'rgba(0,0,0,0.4)'; // muted gray for numbers
+                   const cellTextColor = (isToday && !isTrained)
+                     ? '#016c48' // green text on tint
+                     : isTrained
+                     ? '#ffffff'
+                     : 'rgba(0,0,0,0.4)'; // muted gray for numbers
 
-                  return (
-                    <div 
-                      key={i} 
-                      title={d.date} 
-                      style={{ 
-                        backgroundColor: cellBackground, 
-                        color: cellTextColor 
-                      }} 
-                      className={`aspect-square rounded-lg flex items-center justify-center text-[11px] font-black transition-all ${isTrained && !isToday ? 'scale-105 shadow-md shadow-primary/10' : ''}`}
-                    >
-                      {d.label}
-                    </div>
-                  );
-                })}
-              </div>
-           </div>
+                   return (
+                     <div 
+                       key={i} 
+                       title={d.date} 
+                       style={{ 
+                         backgroundColor: cellBackground, 
+                         color: cellTextColor,
+                         aspectRatio: '1',
+                         borderRadius: '8px',
+                         display: 'flex',
+                         alignItems: 'center',
+                         justifyContent: 'center',
+                         fontSize: '13px',
+                         fontWeight: 500,
+                         transition: 'all 0.2s',
+                         transform: (isTrained && !isToday) ? 'scale(1.05)' : 'none',
+                         boxShadow: (isTrained && !isToday) ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none'
+                       }} 
+                     >
+                       {d.label}
+                     </div>
+                   );
+                 })}
+               </div>
+            </div>
 
            <div className="space-y-4 pt-6 border-t border-outline-variant/5">
               <style>{`
