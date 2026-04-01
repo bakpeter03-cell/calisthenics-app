@@ -258,50 +258,25 @@ export default function VolumeChart({ logs = [] }) {
     });
 
     // Metrics for Cards
-    const currentWeekIdx = 7;
-    const lastWeekIdx = 6;
-    const currentWeekIso = weekBuckets[currentWeekIdx].iso;
-    const lastWeekIso = weekBuckets[lastWeekIdx].iso;
+    // Metrics for Cards
+    const weeksWithData = weekBuckets
+      .map(wb => ({
+        iso: wb.iso,
+        total: uniqueExercises.reduce((sum, ex) => sum + (aggregation[ex][wb.iso] || 0), 0)
+      }))
+      .filter(w => w.total > 0)
+      .reverse(); // newest first
 
-    const currentTotal = uniqueExercises.reduce((sum, ex) => sum + (aggregation[ex][currentWeekIso] || 0), 0);
+    const latestWeekTotal = weeksWithData[0]?.total ?? 0;
+    const previousWeekTotal = weeksWithData[1]?.total ?? 0;
 
-    // Comparison: Previous week same relative period
-    // Mon of current week
-    const currentMon = parseLocalDate(weekBuckets[7].monday);
-    // Corresponding Mon last week
-    const lastMon = new Date(currentMon);
-    lastMon.setDate(lastMon.getDate() - 7);
+    const currentTotal = latestWeekTotal;
+    const lastTotalEq = previousWeekTotal;
+    const delta = previousWeekTotal > 0
+      ? ((latestWeekTotal - previousWeekTotal) / previousWeekTotal) * 100
+      : null;
 
-    // End point last week (same relative relative to anchor)
-    const lastEquivEnd = new Date(lastMon);
-    // Days since Mon of this current bucket
-    const diffDays = Math.floor((anchorDate - currentMon) / (1000 * 60 * 60 * 24));
-    lastEquivEnd.setDate(lastEquivEnd.getDate() + diffDays);
-    lastEquivEnd.setHours(23, 59, 59, 999);
-
-    const lastWeekEquivLogs = categoryLogs.filter(l => {
-      const d = parseLocalDate(l.date);
-      return d >= lastMon && d <= lastEquivEnd;
-    });
-
-    const lastWeekEquivAgg = {};
-    uniqueExercises.forEach(ex => lastWeekEquivAgg[ex] = 0);
-
-    lastWeekEquivLogs.forEach(l => {
-      let val = 0;
-      if (viewMode === 'volume') val = volumeScore(l, bodyweightKg);
-      else if (viewMode === 'reps') val = repsValue(l);
-      else if (viewMode === 'intensity') val = intensityScore(l, bodyweightKg);
-
-      if (viewMode === 'intensity') {
-        lastWeekEquivAgg[l.exercise] = Math.max(lastWeekEquivAgg[l.exercise], val);
-      } else {
-        lastWeekEquivAgg[l.exercise] += val;
-      }
-    });
-
-    const lastTotalEq = uniqueExercises.reduce((sum, ex) => sum + (lastWeekEquivAgg[ex] || 0), 0);
-    const delta = lastTotalEq > 0 ? ((currentTotal - lastTotalEq) / lastTotalEq) * 100 : null;
+    const currentWeekIso = weeksWithData[0]?.iso ?? weekBuckets[7].iso;
 
     const currentWeekLogs = categoryLogs.filter(l => isoWeek(l.date) === currentWeekIso);
 
@@ -343,19 +318,19 @@ export default function VolumeChart({ logs = [] }) {
 
   const getVolumeTrend = (thisWeek, lastWeek) => {
     if (thisWeek === 0 || thisWeek == null) {
-      return { statement: 'No sessions yet', color: 'var(--color-text-tertiary)' };
+      return { statement: 'No sessions yet', color: 'var(--color-text-tertiary)', showSubtitle: false };
     }
     if (lastWeek === 0 || lastWeek == null) {
-      return { statement: 'Volume logged', color: 'var(--color-text-primary)' };
+      return { statement: 'Need 3+ weeks', color: 'var(--color-text-tertiary)', showSubtitle: false };
     }
     const pct = Math.round(((thisWeek - lastWeek) / lastWeek) * 100);
     if (Math.abs(pct) <= 5) {
-      return { statement: 'Stayed the same', color: 'var(--color-text-tertiary)' };
+      return { statement: 'Stayed the same', color: 'var(--color-text-secondary)', showSubtitle: false };
     }
     if (pct > 0) {
-      return { statement: `Increased ${pct}%`, color: '#1D9E75' };
+      return { statement: `Increased ${pct}%`, color: '#1D9E75', showSubtitle: true };
     }
-    return { statement: `Decreased ${Math.abs(pct)}%`, color: '#E24B4A' };
+    return { statement: `Decreased ${Math.abs(pct)}%`, color: '#E24B4A', showSubtitle: true };
   };
 
   const toggleExercise = (name) => {
@@ -566,19 +541,11 @@ export default function VolumeChart({ logs = [] }) {
 
               // 1. Volume/Reps Chip
               const volLabel = viewMode === 'volume' ? 'Weekly volume' : (viewMode === 'reps' ? 'Weekly reps' : 'Peak intensity');
-              const volHasData = metrics.currentTotal > 0;
-              let volValue = '';
-              let volColor = 'var(--color-text-primary)';
-
-              if (volHasData) {
-                if (viewMode === 'reps') {
-                  volValue = `${Math.round(metrics.currentTotal).toLocaleString()} reps`;
-                } else {
-                  const trend = getVolumeTrend(metrics.currentTotal, metrics.lastTotalEq);
-                  volValue = trend.statement;
-                  volColor = trend.color;
-                }
-              }
+              const volHasData = metrics.currentTotal > 0 && metrics.lastTotalEq > 0;
+              const trend = getVolumeTrend(metrics.currentTotal, metrics.lastTotalEq);
+              const volValue = trend.statement;
+              const volColor = trend.color;
+              const volSubtitle = trend.showSubtitle ? 'vs previous logged week' : '';
 
               // 2. Best Set Chip
               const bestHasData = metrics.bestSetVal > 0;
@@ -593,8 +560,9 @@ export default function VolumeChart({ logs = [] }) {
                   <MetricChip
                     label={volLabel}
                     value={volValue}
-                    subtitle="vs same point last week"
+                    subtitle={volSubtitle}
                     hasData={volHasData}
+                    emptyText={volValue}
                     color={volColor}
                   />
                   <MetricChip
