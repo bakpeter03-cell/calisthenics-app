@@ -328,7 +328,7 @@ export default function Dashboard() {
            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <h3 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Consistency</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div className="px-3 py-1 border border-[#1D9E75]/30 rounded-full text-[12px] font-medium text-[#1D9E75] bg-transparent mr-2">{currentStreak} day streak</div>
+                <div style={{ whiteSpace: 'nowrap' }} className="px-3 py-1 border border-[#1D9E75]/30 rounded-full text-[12px] font-medium text-[#1D9E75] bg-transparent mr-2">{currentStreak} day{currentStreak !== 1 ? 's' : ''} streak</div>
                 <button
                   onClick={() => {
                     if (calendarMonth === 0) { setCalendarMonth(11); setCalendarYear(y => y - 1); }
@@ -493,7 +493,7 @@ export default function Dashboard() {
                   <div className="last-workout-row">
                     <span className="last-workout-label">Last workout</span>
                     <span className="last-workout-value">
-                      {lastWorkoutDetails.date} · {lastWorkoutDetails.category} · {lastWorkoutDetails.sets} sets
+                       {lastWorkoutDetails.date} · {lastWorkoutDetails.category} · {lastWorkoutDetails.sets} {lastWorkoutDetails.sets === 1 ? 'set' : 'sets'}
                     </span>
                   </div>
                 </>

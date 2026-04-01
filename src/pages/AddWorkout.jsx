@@ -10,7 +10,7 @@ import { getExerciseMeta } from '../utils/exerciseMap';
 const EXERCISES = {
   Push: ['Push-up', 'Decline Push-up', 'Incline Push-up', 'Dip', 'Straight Bar Dip', 'Pike Push-up', 'Elevated Pike Pushup', 'Handstand Push-up', 'Archer Push-up'],
   Pull: ['Pull-up', 'Chin-up', 'L-sit pull-up', 'Row', 'Tucked Front Lever Raise', 'Advanced Tucked Front Lever Raise', 'One-leg Front Lever Raise', 'Front Lever Raise'],
-  Legs: ['Squat', 'Pistol Squat', 'Lunge', 'One-leg Lunge', 'Calf Raise'],
+  Legs: ['Bulgarian Split Squat', 'Reverse Nordics', 'Nordic Negatives', 'Single-leg RDL', 'Deficit Calf Raise'],
   Core: ['Knee Raise', 'Toes-to-bar', 'Dragon Flag', 'L-sit'],
   Skills: ['Muscle-up', 'Handstand', 'Front Lever', 'L-sit']
 };
@@ -66,7 +66,7 @@ export default function AddWorkout() {
   const handleSave = () => {
     const parsedReps = parseInt(reps) || 0;
     const parsedHold = parseInt(hold) || 0;
-    
+
     if (parsedReps === 0 && parsedHold === 0) {
       alert('Enter reps or hold duration before saving.');
       return;
@@ -124,7 +124,7 @@ export default function AddWorkout() {
   const getPrevSessionStats = (exName) => {
     const prevLogs = logs.filter(l => l.exercise === exName && l.date !== date && l.date < date);
     if (!prevLogs.length) return null;
-    const prevDates = [...new Set(prevLogs.map(l => l.date))].sort((a,b) => b.localeCompare(a));
+    const prevDates = [...new Set(prevLogs.map(l => l.date))].sort((a, b) => b.localeCompare(a));
     const lastDate = prevDates[0];
     const sessionLogs = prevLogs.filter(l => l.date === lastDate);
     const totalReps = sessionLogs.reduce((sum, l) => sum + l.reps, 0);
@@ -146,11 +146,11 @@ export default function AddWorkout() {
   return (
     <div className="space-y-8">
       {/* Smart Countdown Timer */}
-      <PulseTimer 
+      <PulseTimer
         onPresetChange={(secs) => {
           setRest(String(secs));
           localStorage.setItem(`cali_prefer_rest_${exercise}`, secs);
-        }} 
+        }}
       />
 
       {/* Date Picker Button */}
@@ -159,10 +159,10 @@ export default function AddWorkout() {
           <span className="material-symbols-outlined text-[18px]">calendar_today</span>
           Workout date
         </label>
-        <input 
-          type="date" 
-          value={date} 
-          onChange={e => setDate(e.target.value)} 
+        <input
+          type="date"
+          value={date}
+          onChange={e => setDate(e.target.value)}
           className="bg-surface rounded-lg border-none px-3 py-1.5 focus:ring-primary text-sm font-bold text-primary outline-none"
         />
       </div>
@@ -172,11 +172,10 @@ export default function AddWorkout() {
           <button
             key={cat}
             onClick={() => handleCategoryChange(cat)}
-            className={`flex-1 py-3 px-4 rounded-xl font-bold text-center tracking-wide text-sm ${
-              category === cat 
-                ? 'bg-primary text-on-primary shadow-md' 
+            className={`flex-1 py-3 px-4 rounded-xl font-bold text-center tracking-wide text-sm ${category === cat
+                ? 'bg-primary text-on-primary shadow-md'
                 : 'bg-transparent border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-low'
-            }`}
+              }`}
           >
             {cat}
           </button>
@@ -186,62 +185,62 @@ export default function AddWorkout() {
       <Card className="space-y-6">
         <div className="space-y-4">
           <div className="relative group">
-             <label style={{ fontFamily: "'Inter', sans-serif" }} className="block font-label text-[10px] font-bold tracking-widest text-on-surface-variant mb-1 ml-1">Exercise</label>
-             <select 
-               value={exercise} 
-               onChange={e => setExercise(e.target.value)}
-               className="w-full bg-surface-container-low border border-outline-variant/10 focus:border-secondary focus:bg-secondary/5 rounded-xl px-4 py-3 focus:ring-0 text-on-surface font-bold transition-colors tracking-wide"
-             >
-               {EXERCISES[category].map(ex => <option key={ex} value={ex}>{ex}</option>)}
-             </select>
+            <label style={{ fontFamily: "'Inter', sans-serif" }} className="block font-label text-[10px] font-bold tracking-widest text-on-surface-variant mb-1 ml-1">Exercise</label>
+            <select
+              value={exercise}
+              onChange={e => setExercise(e.target.value)}
+              className="w-full bg-surface-container-low border border-outline-variant/10 focus:border-secondary focus:bg-secondary/5 rounded-xl px-4 py-3 focus:ring-0 text-on-surface font-bold transition-colors tracking-wide"
+            >
+              {EXERCISES[category].map(ex => <option key={ex} value={ex}>{ex}</option>)}
+            </select>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <Input label="Weight (kg)" type="number" inputMode="numeric" pattern="[0-9]*" value={weight} onChange={e => setWeight(e.target.value)} onKeyDown={handleKeyDown} placeholder="BW" />
             {!['L-sit', 'Handstand', 'Front Lever'].includes(exercise) && (
-              <Input 
-                label="Reps" 
-                type="number" 
+              <Input
+                label="Reps"
+                type="number"
                 inputMode="numeric"
-                pattern="[0-9]*" 
-                value={reps} 
-                onChange={e => setReps(e.target.value)} 
-                onKeyDown={handleKeyDown} 
-                onDecrement={() => setReps(r => String(Math.max(0, (parseInt(r)||0) - 1)))} 
-                onIncrement={() => setReps(r => String((parseInt(r)||0) + 1))} 
-                placeholder="0" 
+                pattern="[0-9]*"
+                value={reps}
+                onChange={e => setReps(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onDecrement={() => setReps(r => String(Math.max(0, (parseInt(r) || 0) - 1)))}
+                onIncrement={() => setReps(r => String((parseInt(r) || 0) + 1))}
+                placeholder="0"
               />
             )}
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
-            <Input 
-              label="Rest (sec)" 
-              type="number" 
+            <Input
+              label="Rest (sec)"
+              type="number"
               inputMode="numeric"
-              pattern="[0-9]*" 
-              value={rest} 
-              onChange={e => setRest(e.target.value)} 
-              onKeyDown={handleKeyDown} 
-              onDecrement={() => setRest(r => String(Math.max(0, (parseInt(r)||0) - 10)))} 
-              onIncrement={() => setRest(r => String((parseInt(r)||0) + 10))} 
-              placeholder="0" 
+              pattern="[0-9]*"
+              value={rest}
+              onChange={e => setRest(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onDecrement={() => setRest(r => String(Math.max(0, (parseInt(r) || 0) - 10)))}
+              onIncrement={() => setRest(r => String((parseInt(r) || 0) + 10))}
+              placeholder="0"
             />
-            <Input 
-              label="Hold (sec)" 
-              type="number" 
+            <Input
+              label="Hold (sec)"
+              type="number"
               inputMode="numeric"
-              pattern="[0-9]*" 
-              value={hold} 
-              onChange={e => setHold(e.target.value)} 
-              onKeyDown={handleKeyDown} 
-              onDecrement={() => setHold(h => String(Math.max(0, (parseInt(h)||0) - 1)))} 
-              onIncrement={() => setHold(h => String((parseInt(h)||0) + 1))} 
-              placeholder="0" 
+              pattern="[0-9]*"
+              value={hold}
+              onChange={e => setHold(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onDecrement={() => setHold(h => String(Math.max(0, (parseInt(h) || 0) - 1)))}
+              onIncrement={() => setHold(h => String((parseInt(h) || 0) + 1))}
+              placeholder="0"
             />
           </div>
         </div>
-        
+
         <div className="flex gap-2 w-full pt-2">
           {targetLogs.length > 0 && (
             <Button className="flex-1 shadow-md bg-surface border border-outline-variant/30 text-on-surface-variant hover:text-primary transition-colors hover:border-primary/50" variant="secondary" onClick={handleDuplicateLast}>
@@ -261,7 +260,7 @@ export default function AddWorkout() {
             {isToday ? "Today's workout" : "Logged for " + date.split('-').reverse().join('/')}
           </h2>
         </div>
-        
+
         {Object.keys(groupedTodaysLogs).length === 0 ? (
           <p className="text-center text-on-surface-variant text-sm font-medium py-8 bg-surface-container-low rounded-xl border border-dashed border-outline-variant/30">No exercises logged for {isToday ? 'today' : date} yet. Get started!</p>
         ) : (
@@ -279,7 +278,7 @@ export default function AddWorkout() {
                     <h4 style={{ fontFamily: "'Inter', sans-serif" }} className="font-black text-[22px] text-primary flex items-center gap-2 tracking-tight leading-none">
                       {ex}
                     </h4>
-                    
+
                     {/* Stats Grid */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '12px', marginTop: '16px' }}>
                       <div style={{ background: 'var(--color-background-secondary, #f1f3f4)', border: '0.5px solid var(--color-border-tertiary, #e0e3e5)', borderRadius: '8px', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', flex: 1 }}>
@@ -319,14 +318,14 @@ export default function AddWorkout() {
                     {/* Previous Session Comp */}
                     {prevStats && (
                       <div className="mt-3 bg-surface px-4 py-3 rounded-xl border border-surface-variant/40 flex justify-between items-center text-xs shadow-sm">
-                         <span className="font-bold text-on-surface-variant">Last: {prevStats.sets} sets, {prevStats.reps} reps</span>
-                         <span style={{ fontFamily: "'Inter', sans-serif" }} className={`font-black ${totalReps > prevStats.reps ? 'text-primary' : totalReps < prevStats.reps ? 'text-error' : 'text-on-surface-variant/50'}`}>
-                           {totalReps > prevStats.reps ? `+${totalReps - prevStats.reps}` : totalReps - prevStats.reps === 0 ? '' : totalReps - prevStats.reps} reps vs last session
-                         </span>
+                        <span className="font-bold text-on-surface-variant">Last: {prevStats.sets} sets, {prevStats.reps} reps</span>
+                        <span style={{ fontFamily: "'Inter', sans-serif" }} className={`font-black ${totalReps > prevStats.reps ? 'text-primary' : totalReps < prevStats.reps ? 'text-error' : 'text-on-surface-variant/50'}`}>
+                          {totalReps > prevStats.reps ? `+${totalReps - prevStats.reps}` : totalReps - prevStats.reps === 0 ? '' : totalReps - prevStats.reps} reps vs last session
+                        </span>
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex flex-col space-y-2">
                     {exLogs.map((log, listIdx) => (
                       <div key={log.id} className="flex justify-between items-center py-3 px-4 bg-white dark:bg-surface-container-low rounded-xl border border-surface-variant/40 group hover:border-secondary/40 transition-colors shadow-sm">
@@ -336,7 +335,7 @@ export default function AddWorkout() {
                             Set {listIdx + 1}
                           </span>
                         </div>
-                        
+
                         {/* REPS */}
                         <div className="flex-1 flex justify-center">
                           {(log.reps > 0 || !log.hold_seconds) && (

@@ -452,12 +452,23 @@ export default function VolumeChart({ logs = [] }) {
       </div>
 
       {/* 3. Category Tabs */}
-      <div className="flex gap-2 p-1 bg-surface-container-high rounded-2xl w-fit">
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        padding: '4px',
+        background: 'var(--md-sys-color-surface-container-high)',
+        borderRadius: '20px',
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
+        width: '100%',
+        msOverflowStyle: 'none'
+      }} className="no-scrollbar">
         {['Push', 'Pull', 'Legs', 'Core'].map(cat => (
           <button
             key={cat}
             onClick={() => { setActiveCategory(cat); setHiddenExercises(new Set()); setHintOpen(false); }}
-            className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activeCategory === cat ? 'bg-primary text-on-primary shadow-lg shadow-primary/20' : 'text-on-surface-variant hover:bg-surface-container-highest'}`}
+            className={`flex-shrink-0 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activeCategory === cat ? 'bg-primary text-on-primary shadow-lg shadow-primary/20' : 'text-on-surface-variant hover:bg-surface-container-highest'}`}
           >
             {cat}
           </button>
@@ -479,6 +490,11 @@ export default function VolumeChart({ logs = [] }) {
               gap: 8px;
               margin-bottom: 8px;
             }
+            @media (max-width: 480px) {
+              .metric-chip { padding: 8px 10px !important; }
+              .metric-chip .chip-label { font-size: 10px !important; }
+              .metric-chip .chip-value { font-size: 13px !important; }
+            }
           `}</style>
 
           <div className="metric-row">
@@ -488,7 +504,7 @@ export default function VolumeChart({ logs = [] }) {
                 const isEmpty = !hasData;
                 const hintBodyColor = 'var(--color-text-secondary, #44474e)';
                 return (
-                  <div style={{
+                  <div className="metric-chip" style={{
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'flex-start',
@@ -500,10 +516,10 @@ export default function VolumeChart({ logs = [] }) {
                     border: '1px solid var(--color-border-secondary, #e0e3e5)',
                     borderRadius: '10px',
                   }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: isEmpty ? hintBodyColor : 'var(--color-text-secondary)' }}>
+                    <span className="chip-label" style={{ fontSize: '11px', fontWeight: 700, color: isEmpty ? hintBodyColor : 'var(--color-text-secondary)' }}>
                       {label}
                     </span>
-                    <span style={{
+                    <span className="chip-value" style={{
                       fontSize: '15px',
                       fontWeight: isEmpty ? 400 : 700,
                       color: isEmpty ? hintBodyColor : color,
@@ -566,7 +582,7 @@ export default function VolumeChart({ logs = [] }) {
                     value={progValue}
                     subtitle=""
                     hasData={progHasData}
-                    emptyText="Need 3+ weeks of data"
+                    emptyText="Need 3+ weeks"
                   />
                 </>
               );
