@@ -17,19 +17,43 @@ const PALETTE = [
 
 const HOLD_DIVISOR = { Push: 3, Pull: 5, Legs: 5, Core: 5 };
 
-// --- Formulas ---
+// --- Date Helpers & Bucketing ---
+
+function toLocalDateStr(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseLocalDate(dateStr) {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day); // local midnight, no UTC shift
+}
 
 function isoWeek(dateStr) {
-  const d = new Date(dateStr);
-  const day = d.getDay() || 7;
-  d.setDate(d.getDate() + 4 - day);
-  const yearStart = new Date(d.getFullYear(), 0, 1);
-  return d.getFullYear() + '-W' + String(Math.ceil((((d - yearStart) / 86400000) + 1) / 7)).padStart(2, '0');
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day); // local, no UTC shift
+  const dayOfWeek = d.getDay() || 7; // 1=Mon, 7=Sun
+  const thursday = new Date(d);
+  thursday.setDate(d.getDate() + 4 - dayOfWeek);
+  const yearStart = new Date(thursday.getFullYear(), 0, 1);
+  const weekNum = Math.ceil(((thursday - yearStart) / 86400000 + 1) / 7);
+  // Use thursday.getFullYear() — NOT d.getFullYear() — for correct ISO year
+  return `${thursday.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 }
 
 function weekLabel(mondayDateStr) {
-  const d = new Date(mondayDateStr);
+  const [year, month, day] = mondayDateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function getWeeksAgoDate(weeks) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - weeks * 7);
+  return d; // local midnight
 }
 
 function volumeScore(log, bodyweight_kg) {
@@ -75,30 +99,58 @@ function getMonday(date) {
   const d = new Date(date);
   const day = d.getDay() || 7;
   d.setDate(d.getDate() - day + 1);
-  return d.toISOString().split('T')[0];
+  return toLocalDateStr(d);
+}
+
+// --- Date Helpers for Equivalent Comparisons ---
+
+function getDayOfWeek() {
+  const day = new Date().getDay();
+  return day === 0 ? 7 : day; // Sunday = 7, Monday = 1
+}
+
+function getThisWeekStart() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - day + 1);
+  return d;
+}
+
+function getLastWeekStart() {
+  const d = getThisWeekStart();
+  d.setDate(d.getDate() - 7);
+  return d;
+}
+
+function getLastWeekEquivalentEnd() {
+  const d = getThisWeekStart();
+  const dow = getDayOfWeek();
+  d.setDate(d.getDate() - 7 + (dow - 1));
+  d.setHours(23, 59, 59, 999);
+  return d;
 }
 
 export default function VolumeChart({ logs = [] }) {
   const [activeCategory, setActiveCategory] = useState('Push');
   const [viewMode, setViewMode] = useState('volume'); // 'volume', 'reps', 'intensity'
   const [bodyweightKg, setBodyweightKg] = useState(72);
-  const [hiddenExercises, setHiddenExercises] = useState(new Set());
   const [loadingBodyweight, setLoadingBodyweight] = useState(true);
-  const [showHowItWorks, setShowHowItWorks] = useState(false);
-  const [showInsight, setShowInsight] = useState(false);
+  const [hiddenExercises, setHiddenExercises] = useState(new Set());
+  const [hintOpen, setHintOpen] = useState(false);
 
   // 1. Fetch Bodyweight
   useEffect(() => {
     async function fetchProfile() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      
+
       const { data, error } = await supabase
         .from('profiles')
         .select('bodyweight') // Database has 'bodyweight' but spec says 'bodyweight_kg'
         .eq('id', session.user.id)
         .single();
-      
+
       if (!error && data?.bodyweight) {
         setBodyweightKg(data.bodyweight);
       }
@@ -108,25 +160,54 @@ export default function VolumeChart({ logs = [] }) {
   }, []);
 
   // 2. Data Processing
-  const { chartData, exercises, metrics, isReady } = useMemo(() => {
-    if (!logs.length) return { isReady: false };
+  const { chartData, exercises, weeksOfDataCount, metrics, isReady } = useMemo(() => {
+    const defaultReturn = { chartData: [], exercises: [], weeksOfDataCount: 0, metrics: { currentTotal: 0, delta: 0, bestSetEx: 'None', bestSetVal: 0, progressingCount: 0, totalInCat: 0 }, isReady: false };
+    if (!logs.length) return defaultReturn;
 
-    // Get range of last 8 weeks
+    // 1. Anchor window to most recent log in category
+    const categoryLogsRaw = logs.filter(l => l.category === activeCategory);
+    if (categoryLogsRaw.length === 0) return defaultReturn;
+
+    const latestDateStr = categoryLogsRaw.reduce((latest, l) => l.date > latest ? l.date : latest, '1970-01-01');
+    const [ey, em, ed] = latestDateStr.split('-').map(Number);
+    const anchorDate = new Date(ey, em - 1, ed); // local midnight
+
+    // Window End (End of day)
+    const windowEnd = new Date(anchorDate);
+    windowEnd.setHours(23, 59, 59, 999);
+
+    // Window Start (8 weeks back)
+    const windowStart = new Date(anchorDate);
+    windowStart.setHours(0, 0, 0, 0);
+    windowStart.setDate(windowStart.getDate() - 56);
+
+    const windowLogs = logs.filter(l => {
+      const d = parseLocalDate(l.date);
+      return d >= windowStart && d <= windowEnd;
+    });
+
+    if (!windowLogs.length && categoryLogsRaw.length === 0) return defaultReturn;
+
+    // 2. Get range of last 8 weeks buckets (Ending on the week containing anchorDate)
     const weekBuckets = [];
+    const latestMondayStr = getMonday(anchorDate);
+    const m = parseLocalDate(latestMondayStr);
+
     for (let i = 7; i >= 0; i--) {
-      const d = new Date();
+      const d = new Date(m);
       d.setDate(d.getDate() - (i * 7));
+      const isoStr = toLocalDateStr(d);
       weekBuckets.push({
-        iso: isoWeek(d.toISOString().split('T')[0]),
-        monday: getMonday(d),
+        iso: isoWeek(isoStr),
+        monday: isoStr,
       });
     }
 
-    const categoryLogs = logs.filter(l => l.category === activeCategory);
-    if (!categoryLogs.length) return { isReady: false };
+    const categoryLogs = windowLogs.filter(l => l.category === activeCategory);
+    if (!categoryLogs.length) return defaultReturn;
 
     const uniqueExercises = [...new Set(categoryLogs.map(l => l.exercise))].sort();
-    
+
     // Aggregate by week and exercise
     const aggregation = {}; // { [exercise]: { [isoWeek]: value } }
     uniqueExercises.forEach(ex => {
@@ -136,17 +217,20 @@ export default function VolumeChart({ logs = [] }) {
 
     categoryLogs.forEach(log => {
       const week = isoWeek(log.date);
-      if (aggregation[log.exercise] && aggregation[log.exercise][week] !== undefined) {
-        let val = 0;
-        if (viewMode === 'volume') val = volumeScore(log, bodyweightKg);
-        else if (viewMode === 'reps') val = repsValue(log);
-        else if (viewMode === 'intensity') val = intensityScore(log, bodyweightKg);
+      if (!aggregation[log.exercise]) return;
+      // Initialize week if not in bucket (edge case safety)
+      if (aggregation[log.exercise][week] === undefined) {
+        aggregation[log.exercise][week] = 0;
+      }
+      let val = 0;
+      if (viewMode === 'volume') val = volumeScore(log, bodyweightKg);
+      else if (viewMode === 'reps') val = repsValue(log);
+      else if (viewMode === 'intensity') val = intensityScore(log, bodyweightKg);
 
-        if (viewMode === 'intensity') {
-          aggregation[log.exercise][week] = Math.max(aggregation[log.exercise][week], val);
-        } else {
-          aggregation[log.exercise][week] += val;
-        }
+      if (viewMode === 'intensity') {
+        aggregation[log.exercise][week] = Math.max(aggregation[log.exercise][week], val);
+      } else {
+        aggregation[log.exercise][week] += val;
       }
     });
 
@@ -179,44 +263,100 @@ export default function VolumeChart({ logs = [] }) {
     const currentWeekIso = weekBuckets[currentWeekIdx].iso;
     const lastWeekIso = weekBuckets[lastWeekIdx].iso;
 
-    const getWeeklyTotal = (iso) => uniqueExercises.reduce((sum, ex) => sum + (aggregation[ex][iso] || 0), 0);
-    const currentTotal = getWeeklyTotal(currentWeekIso);
-    const lastTotal = getWeeklyTotal(lastWeekIso);
-    const delta = lastTotal > 0 ? ((currentTotal - lastTotal) / lastTotal) * 100 : 0;
+    const currentTotal = uniqueExercises.reduce((sum, ex) => sum + (aggregation[ex][currentWeekIso] || 0), 0);
+
+    // Comparison: Previous week same relative period
+    // Mon of current week
+    const currentMon = parseLocalDate(weekBuckets[7].monday);
+    // Corresponding Mon last week
+    const lastMon = new Date(currentMon);
+    lastMon.setDate(lastMon.getDate() - 7);
+
+    // End point last week (same relative relative to anchor)
+    const lastEquivEnd = new Date(lastMon);
+    // Days since Mon of this current bucket
+    const diffDays = Math.floor((anchorDate - currentMon) / (1000 * 60 * 60 * 24));
+    lastEquivEnd.setDate(lastEquivEnd.getDate() + diffDays);
+    lastEquivEnd.setHours(23, 59, 59, 999);
+
+    const lastWeekEquivLogs = categoryLogs.filter(l => {
+      const d = parseLocalDate(l.date);
+      return d >= lastMon && d <= lastEquivEnd;
+    });
+
+    const lastWeekEquivAgg = {};
+    uniqueExercises.forEach(ex => lastWeekEquivAgg[ex] = 0);
+
+    lastWeekEquivLogs.forEach(l => {
+      let val = 0;
+      if (viewMode === 'volume') val = volumeScore(l, bodyweightKg);
+      else if (viewMode === 'reps') val = repsValue(l);
+      else if (viewMode === 'intensity') val = intensityScore(l, bodyweightKg);
+
+      if (viewMode === 'intensity') {
+        lastWeekEquivAgg[l.exercise] = Math.max(lastWeekEquivAgg[l.exercise], val);
+      } else {
+        lastWeekEquivAgg[l.exercise] += val;
+      }
+    });
+
+    const lastTotalEq = uniqueExercises.reduce((sum, ex) => sum + (lastWeekEquivAgg[ex] || 0), 0);
+    const delta = lastTotalEq > 0 ? ((currentTotal - lastTotalEq) / lastTotalEq) * 100 : null;
 
     const currentWeekLogs = categoryLogs.filter(l => isoWeek(l.date) === currentWeekIso);
-    
+
     // Find best set exercise this week
     let bestSetEx = 'No exercises';
     let bestSetVal = 0;
     currentWeekLogs.forEach(l => {
-        let score = 0;
-        if (viewMode === 'volume') score = volumeScore(l, bodyweightKg);
-        else if (viewMode === 'reps') score = repsValue(l);
-        else if (viewMode === 'intensity') score = intensityScore(l, bodyweightKg);
-        
-        if (score > bestSetVal) {
-            bestSetVal = score;
-            bestSetEx = l.exercise;
-        }
+      let score = 0;
+      if (viewMode === 'volume') score = volumeScore(l, bodyweightKg);
+      else if (viewMode === 'reps') score = repsValue(l);
+      else if (viewMode === 'intensity') score = intensityScore(l, bodyweightKg);
+
+      if (score > bestSetVal) {
+        bestSetVal = score;
+        bestSetEx = l.exercise;
+      }
     });
 
     const progressingCount = exercisesWithMeta.filter(ex => ex.velocity > 5).length;
+
+    const weeksOfDataCount = chartData.length;
 
     return {
       chartData,
       exercises: exercisesWithMeta,
       isReady: true,
+      weeksOfDataCount,
       metrics: {
         currentTotal,
         delta,
         bestSetEx,
         bestSetVal,
         progressingCount,
-        totalInCat: uniqueExercises.length
+        totalInCat: uniqueExercises.length,
+        lastTotalEq
       }
     };
   }, [logs, activeCategory, viewMode, bodyweightKg]);
+
+  const getVolumeTrend = (thisWeek, lastWeek) => {
+    if (thisWeek === 0 || thisWeek == null) {
+      return { statement: 'No sessions yet', color: 'var(--color-text-tertiary)' };
+    }
+    if (lastWeek === 0 || lastWeek == null) {
+      return { statement: 'Volume logged', color: 'var(--color-text-primary)' };
+    }
+    const pct = Math.round(((thisWeek - lastWeek) / lastWeek) * 100);
+    if (Math.abs(pct) <= 5) {
+      return { statement: 'Stayed the same', color: 'var(--color-text-tertiary)' };
+    }
+    if (pct > 0) {
+      return { statement: `Increased ${pct}%`, color: '#1D9E75' };
+    }
+    return { statement: `Decreased ${Math.abs(pct)}%`, color: '#E24B4A' };
+  };
 
   const toggleExercise = (name) => {
     const next = new Set(hiddenExercises);
@@ -229,9 +369,70 @@ export default function VolumeChart({ logs = [] }) {
 
   return (
     <div className="bg-surface-container-lowest p-6 rounded-3xl border border-outline-variant/10 shadow-sm space-y-8">
-      
-      {/* 1. Title */}
-      <h2 className="text-[28px] font-semibold text-on-surface">Volume analysis</h2>
+
+      {/* 1. Title Row with Hint Icon */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Volume analysis</h2>
+        <button
+          onClick={() => setHintOpen(h => !h)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '16px',
+            color: 'var(--color-text-secondary)',
+            padding: '2px',
+            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+          }}
+          aria-label="How is this calculated?"
+        >
+          ⓘ
+        </button>
+      </div>
+
+      <style>{`
+        @keyframes fadeIn { 
+          from { opacity: 0; transform: translateY(-4px); } 
+          to { opacity: 1; transform: translateY(0); } 
+        }
+      `}</style>
+
+      {/* Hint Popover */}
+      {hintOpen && (() => {
+        const universalHints = {
+          volume: "Your total weekly training load across all sets — reps, weight, and hold time combined into one number. More sessions, more weight, and more reps all push this up. Watch the trend week over week, not the number itself.",
+          reps: "Total reps logged this week across all sets. Simple and honest — more reps over time means you're doing more work.",
+          intensity: "Your peak effort score for each exercise this week — calculated from your single best set (highest load × reps, or load × hold for isometrics). Unlike volume, doing more sets doesn't move this number. Only a genuinely stronger or heavier best set will. A rising line means your ceiling is going up."
+        };
+
+        const sufficiencyNote = weeksOfDataCount < 2 && metrics.totalInCat > 0
+          ? ` You need at least 2 weeks of ${activeCategory} data to see trends.`
+          : '';
+
+        return (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            padding: '12px 14px',
+            background: 'var(--color-background-secondary, #f8f9fb)',
+            borderRadius: '10px',
+            marginBottom: '12px',
+            animation: 'fadeIn 0.15s ease',
+            border: '1px solid var(--color-border-secondary, #e0e3e5)',
+          }}>
+            <span style={{
+              fontSize: '13px',
+              color: 'var(--color-text-secondary, #44474e)',
+              lineHeight: '1.5',
+            }}>
+              {universalHints[viewMode]}{sufficiencyNote}
+            </span>
+          </div>
+        );
+      })()}
 
       {/* 2. View Mode Toggle — Full Width */}
       <div className="flex gap-2 p-1 bg-surface-container-high rounded-2xl w-full">
@@ -242,7 +443,7 @@ export default function VolumeChart({ logs = [] }) {
         ].map(mode => (
           <button
             key={mode.id}
-            onClick={() => setViewMode(mode.id)}
+            onClick={() => { setViewMode(mode.id); }}
             className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${viewMode === mode.id ? 'bg-primary text-on-primary border-primary shadow-lg shadow-primary/20' : 'bg-transparent border-transparent text-on-surface-variant hover:bg-surface-container-highest'}`}
           >
             {mode.label}
@@ -255,7 +456,7 @@ export default function VolumeChart({ logs = [] }) {
         {['Push', 'Pull', 'Legs', 'Core'].map(cat => (
           <button
             key={cat}
-            onClick={() => { setActiveCategory(cat); setHiddenExercises(new Set()); }}
+            onClick={() => { setActiveCategory(cat); setHiddenExercises(new Set()); setHintOpen(false); }}
             className={`px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activeCategory === cat ? 'bg-primary text-on-primary shadow-lg shadow-primary/20' : 'text-on-surface-variant hover:bg-surface-container-highest'}`}
           >
             {cat}
@@ -273,80 +474,103 @@ export default function VolumeChart({ logs = [] }) {
           {/* 4. Metric Chips Row */}
           <style>{`
             .metric-row {
-              display: flex;
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
               gap: 8px;
-              overflow-x: auto;
-              scrollbar-width: none;
-              -webkit-overflow-scrolling: touch;
               margin-bottom: 8px;
-              padding-bottom: 4px;
-            }
-            .metric-row::-webkit-scrollbar { display: none; }
-            .metric-chip {
-              flex: 0 0 auto;
-              background: var(--color-background-primary, #f8f9fb);
-              border: 1px solid var(--color-border-secondary, #e0e3e5);
-              border-radius: 20px;
-              padding: 8px 14px;
-              display: flex;
-              flex-direction: column;
-              gap: 2px;
-              min-width: 120px;
-              max-width: 180px;
             }
           `}</style>
-          
+
           <div className="metric-row">
-            {/* Weekly Volume Chip */}
-            <div className="metric-chip">
-              <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #73777f)', fontWeight: 400, whiteSpace: 'nowrap' }}>
-                {viewMode === 'volume' ? 'Weekly volume' : (viewMode === 'reps' ? 'Weekly reps' : 'Peak intensity')}
-              </span>
-              <div style={{ fontSize: '15px', color: 'var(--color-text-primary, #191c1e)', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                {metrics.currentTotal === 0 ? (
-                  <span style={{ fontWeight: 400, opacity: 0.5 }}>No sessions yet</span>
-                ) : (
-                  <>
-                    {Math.round(metrics.currentTotal).toLocaleString()}
-                    {metrics.delta !== 0 && (
-                      <span style={{ 
-                        marginLeft: '4px',
-                        color: Math.abs(metrics.delta) <= 5 ? 'var(--color-text-secondary, #73777f)' : (metrics.delta > 0 ? '#1D9E75' : '#E24B4A')
-                      }}>
-                        {metrics.delta > 0 ? '↑' : '↓'} {Math.abs(Math.round(metrics.delta))}%
-                      </span>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
+            {(() => {
+              // Helper Chip Component
+              const MetricChip = ({ label, value, subtitle, hasData, color = 'var(--color-text-primary)', emptyText }) => {
+                const isEmpty = !hasData;
+                const hintBodyColor = 'var(--color-text-secondary, #44474e)';
+                return (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    textAlign: 'left',
+                    gap: '4px',
+                    padding: '10px 14px',
+                    flex: 1,
+                    background: 'var(--color-background-secondary, #f8f9fb)',
+                    border: '1px solid var(--color-border-secondary, #e0e3e5)',
+                    borderRadius: '10px',
+                  }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: isEmpty ? hintBodyColor : 'var(--color-text-secondary)' }}>
+                      {label}
+                    </span>
+                    <span style={{
+                      fontSize: '15px',
+                      fontWeight: isEmpty ? 400 : 700,
+                      color: isEmpty ? hintBodyColor : color,
+                    }}>
+                      {isEmpty ? (emptyText ?? 'No sessions yet') : value}
+                    </span>
+                    <span style={{
+                      fontSize: '11px',
+                      color: 'var(--color-text-tertiary)',
+                      height: '16px',
+                      display: 'block',
+                    }}>
+                      {(hasData && subtitle) ? subtitle : ''}
+                    </span>
+                  </div>
+                );
+              };
 
-            {/* Best Set Chip */}
-            <div className="metric-chip">
-              <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #73777f)', fontWeight: 400, whiteSpace: 'nowrap' }}>Best set</span>
-              <div style={{ fontSize: '15px', color: 'var(--color-text-primary, #191c1e)', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                {metrics.bestSetVal === 0 ? (
-                  <span style={{ fontWeight: 400, opacity: 0.5 }}>Log a session</span>
-                ) : (
-                   `${metrics.bestSetEx.length > 14 ? metrics.bestSetEx.substring(0, 13) + '…' : metrics.bestSetEx} · ${Math.round(metrics.bestSetVal).toLocaleString()} ${unit}`
-                )}
-              </div>
-            </div>
+              // 1. Volume/Reps Chip
+              const volLabel = viewMode === 'volume' ? 'Weekly volume' : (viewMode === 'reps' ? 'Weekly reps' : 'Peak intensity');
+              const volHasData = metrics.currentTotal > 0;
+              let volValue = '';
+              let volColor = 'var(--color-text-primary)';
 
-            {/* Progressing Chip */}
-            <div className="metric-chip">
-              <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #73777f)', fontWeight: 400, whiteSpace: 'nowrap' }}>Progressing</span>
-              <div style={{ fontSize: '15px', color: 'var(--color-text-primary, #191c1e)', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                {metrics.totalInCat < 1 ? (
-                  <span style={{ fontWeight: 400, opacity: 0.5 }}>No data</span>
-                ) : (
-                  // Assuming progression check needs at least some data points as per chart logic
-                  exercises.some(ex => ex.dataPoints >= 3) 
-                    ? `${metrics.progressingCount} of ${metrics.totalInCat} exercises`
-                    : <span style={{ fontWeight: 400, opacity: 0.5 }}>Need 3+ weeks</span>
-                )}
-              </div>
-            </div>
+              if (volHasData) {
+                if (viewMode === 'reps') {
+                  volValue = `${Math.round(metrics.currentTotal).toLocaleString()} reps`;
+                } else {
+                  const trend = getVolumeTrend(metrics.currentTotal, metrics.lastTotalEq);
+                  volValue = trend.statement;
+                  volColor = trend.color;
+                }
+              }
+
+              // 2. Best Set Chip
+              const bestHasData = metrics.bestSetVal > 0;
+              const bestValue = bestHasData ? metrics.bestSetEx : '';
+
+              // 3. Progressing Chip
+              const progHasData = exercises.some(ex => ex.dataPoints >= 3);
+              const progValue = progHasData ? `${metrics.progressingCount} of ${metrics.totalInCat} items` : '';
+
+              return (
+                <>
+                  <MetricChip
+                    label={volLabel}
+                    value={volValue}
+                    subtitle="vs same point last week"
+                    hasData={volHasData}
+                    color={volColor}
+                  />
+                  <MetricChip
+                    label="Best set"
+                    value={bestValue}
+                    subtitle=""
+                    hasData={bestHasData}
+                  />
+                  <MetricChip
+                    label="Progressing"
+                    value={progValue}
+                    subtitle=""
+                    hasData={progHasData}
+                    emptyText="Need 3+ weeks of data"
+                  />
+                </>
+              );
+            })()}
           </div>
 
           {/* 5. Chart */}
@@ -379,18 +603,20 @@ export default function VolumeChart({ logs = [] }) {
                   }}
                   itemStyle={{ fontSize: 12, fontWeight: 700, padding: '2px 0' }}
                   labelStyle={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', color: 'var(--md-sys-color-on-surface-variant)', marginBottom: 8, opacity: 0.5 }}
-                  formatter={(v) => [v.toLocaleString(), viewMode.charAt(0).toUpperCase() + viewMode.slice(1)]}
+                  formatter={(value, name) => [value.toLocaleString(), name]}
+                  labelFormatter={(label) => label}
                 />
                 {exercises.map(ex => (
                   <Line
                     key={ex.name}
                     type="monotone"
                     dataKey={ex.name}
+                    name={ex.name}
                     stroke={ex.color}
                     strokeWidth={2.5}
                     dot={{ r: 3, fill: ex.color, strokeWidth: 0 }}
                     activeDot={{ r: 5, strokeWidth: 0 }}
-                    connectNulls
+                    connectNulls={true}
                     hide={hiddenExercises.has(ex.name)}
                     animationDuration={1000}
                   />
@@ -410,70 +636,6 @@ export default function VolumeChart({ logs = [] }) {
               />
             ))}
           </div>
-
-          {/* Disclaimers — Side-by-Side under pills */}
-          <div className="flex flex-wrap gap-x-12 gap-y-6 pt-6 border-t border-outline-variant/10">
-            {/* How it works */}
-            <div className="flex-1 min-w-[280px]">
-              <button 
-                  onClick={() => setShowHowItWorks(!showHowItWorks)}
-                  className="flex items-center gap-2 text-on-surface-variant/60 hover:text-on-surface-variant transition-colors text-[13px] font-medium"
-              >
-                  <span className="material-symbols-outlined text-[18px]">info</span>
-                  How are these numbers calculated?
-                  <span className={`material-symbols-outlined transform transition-transform duration-200 ${showHowItWorks ? 'rotate-180' : ''}`}>expand_more</span>
-              </button>
-              
-              {showHowItWorks && (
-                  <div className="mt-4 bg-surface-container/50 border border-outline-variant/10 rounded-2xl p-6 text-[13px] text-on-surface-variant leading-relaxed animate-in slide-in-from-top-2 duration-300">
-                    <div className="space-y-6">
-                        <div>
-                            <h4 className="font-bold text-on-surface mb-1">Volume score</h4>
-                            <p>Each set is scored as: <strong>Reps × (Bodyweight + Added weight) × Hold multiplier</strong>.</p>
-                            <p className="mt-2 text-[12px] opacity-70">The hold multiplier adds credit for pausing at the top of a rep — Push exercises use a 3-second divisor, Pull/Legs/Core use 5 seconds. Pure isometric holds (L-sit, planche) score as: Load × Hold seconds ÷ Divisor.</p>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-on-surface mb-1">Reps</h4>
-                            <p>Raw rep count summed per exercise per week. For isometric exercises, hold seconds are used instead of reps.</p>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-on-surface mb-1">Intensity</h4>
-                            <p>Your hardest single set each week — measured as <strong>Load × Reps (or Load × Hold for isometrics)</strong>.</p>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-on-surface mb-1">Progression velocity</h4>
-                            <p>A linear regression (slope) over your last 8 weeks of data. Requires at least 3 weeks of data per exercise.</p>
-                            <p className="mt-2 text-[12px] opacity-70 text-on-primary-container bg-primary-container/20 px-3 py-1 rounded-lg inline-block">
-                                <span className="font-bold">Slope:</span> Above +5%/week = progressing.
-                            </p>
-                        </div>
-                    </div>
-                  </div>
-              )}
-            </div>
-
-            {/* Insight Banner */}
-            <div className="flex-1 min-w-[280px]">
-              <button 
-                  onClick={() => setShowInsight(!showInsight)}
-                  className="flex items-center gap-2 text-on-surface-variant/60 hover:text-on-surface-variant transition-colors text-[13px] font-medium"
-              >
-                  <span className="material-symbols-outlined text-[18px]">info</span>
-                  How to read this chart
-                  <span className={`material-symbols-outlined transform transition-transform duration-200 ${showInsight ? 'rotate-180' : ''}`}>expand_more</span>
-              </button>
-              
-              {showInsight && (
-                  <div className="mt-4 bg-surface-container-low border-l-4 border-primary p-4 rounded-r-2xl animate-in slide-in-from-top-2 duration-300">
-                    <p className="text-[13px] italic text-on-surface-variant leading-relaxed">
-                        {viewMode === 'volume' && "Each line shows your weekly training load for one exercise — the higher and steeper the line, the better. A consistent upward slope over 4–6 weeks means you're successfully overloading. Crossing lines between exercises are normal and often mean you're shifting focus. Watch for flat lines lasting more than 3 weeks — that's a plateau signal."}
-                        {viewMode === 'reps' && "Each line shows total reps logged per week for one exercise. More reps week-over-week means higher training frequency or more sets — both are valid overload strategies. If your reps plateau while your volume score keeps rising, you're likely adding weight or holds — which is the stronger progression signal."}
-                        {viewMode === 'intensity' && "Each line shows your best single set each week — your peak effort regardless of how many sets you did. A rising line here means you're genuinely getting stronger, not just doing more work. This is the closest equivalent to a 1RM trend in calisthenics. A flat line for 3+ weeks at the same rep/weight combination is a clear signal to try a harder variation or add weight."}
-                    </p>
-                  </div>
-              )}
-            </div>
-          </div>
         </>
       )}
     </div>
@@ -490,21 +652,19 @@ function ExercisePill({ exercise, active, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-2 py-1 rounded-md transition-all ${
-        active 
-          ? 'bg-gray-100 opacity-100' 
+      className={`flex items-center gap-2 px-2 py-1 rounded-md transition-all ${active
+          ? 'bg-gray-100 opacity-100'
           : 'bg-gray-100 opacity-30 font-light'
-      }`}
+        }`}
     >
       <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: exercise.color }} />
       <span className="text-[12px] text-gray-600 font-normal">{exercise.name}</span>
-      <span className={`text-[10px] font-bold ${
-        isPending ? 'text-gray-400' : 
-        isPositive ? 'text-green-600' : 
-        isNegative ? 'text-red-500' : 
-        'text-gray-400'
-      }`}>
-        {isPending ? `${exercise.dataPoints}/3 wks` : `${vel > 0 ? '+' : ''}${Math.round(vel)}%`}
+      <span className={`text-[10px] font-bold ${isPending ? 'text-gray-400' :
+          isPositive ? 'text-green-600' :
+            isNegative ? 'text-red-500' :
+              'text-gray-400'
+        }`}>
+        {isPending ? '' : `${vel > 0 ? '+' : ''}${Math.round(vel)}%`}
       </span>
     </button>
   );

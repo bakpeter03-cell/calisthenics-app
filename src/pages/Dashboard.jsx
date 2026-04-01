@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useWorkoutLogs } from '../hooks/useWorkoutLogs';
 import { normalizeLogs, getDateRanges } from '../utils/analytics';
 import { EXERCISE_MAP, getExerciseMeta } from '../utils/exerciseMap';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
 import VolumeChart from '../components/VolumeChart';
 
 export default function Dashboard() {
@@ -30,6 +30,13 @@ export default function Dashboard() {
   };
 
   const [migrationStatus, setMigrationStatus] = useState(null);
+  
+  // Month Switcher State
+  const todayDate = new Date();
+  const [calendarYear, setCalendarYear] = useState(todayDate.getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(todayDate.getMonth()); // 0-indexed
+  const isCurrentMonth = calendarYear === todayDate.getFullYear() && calendarMonth === todayDate.getMonth();
+
   const [dateFilter, setDateFilter] = useState('This Month');
   const [typeFilter, setTypeFilter] = useState('All');
 
@@ -128,35 +135,41 @@ export default function Dashboard() {
   }, [logs]);
 
   const heatmapData = useMemo(() => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = d.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDay = new Date(year, month, 1).getDay();
-    const offset = firstDay === 0 ? 6 : firstDay - 1;
+    const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+    const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+    const offset = firstDay === 0 ? 6 : firstDay - 1; // Mon=0, Sun=6
     const data = [];
     for(let i=0; i<offset; i++) data.push(null);
     for(let i=1; i<=daysInMonth; i++) {
-        const dStr = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+        const dStr = `${calendarYear}-${String(calendarMonth+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
         data.push({ date: dStr, label: i, hasWorkout: allUniqueDays.includes(dStr) });
     }
     return data;
-  }, [allUniqueDays]);
+  }, [allUniqueDays, calendarYear, calendarMonth]);
 
   // Muscle Balance Radar
   const radarData = useMemo(() => {
-    const RADAR_AXES = ['Push', 'Pull', 'Legs', 'Core'];
-    const sm = startOfMonth();
-    const monthLogs = logs.filter(l => new Date(l.date) >= sm);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
 
-    const data = RADAR_AXES.map(axis => {
-      const matchingLogs = monthLogs.filter(l => l.category === axis);
-      const uniqueDays = new Set(matchingLogs.map(l => l.date)).size;
-      return { axis, value: uniqueDays };
+    const last30Logs = logs.filter(l => {
+      const parts = (l.date || '').split('-');
+      if (parts.length < 3) return false;
+      const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      return date >= thirtyDaysAgo;
+    });
+
+    const categories = ['Push', 'Pull', 'Legs', 'Core'];
+    const data = categories.map(cat => {
+      const catLogs = last30Logs.filter(l => l.category === cat);
+      const uniqueDays = new Set(catLogs.map(l => l.date)).size;
+      return { axis: cat, value: uniqueDays, days: uniqueDays };
     });
 
     const maxValue = Math.max(...data.map(d => d.value), 1);
     return data.map(d => ({
+      ...d,
       subject: d.axis,
       normalized: Math.round((d.value / maxValue) * 100),
       full: 100,
@@ -175,21 +188,30 @@ export default function Dashboard() {
   }, [normalizedLogs]);
 
   // Skill Progression
-  const skillChartData = useMemo(() => {
-    const rawSkillLogs = normalizedLogs.filter(l => l.exercise === skillChartEx && l.isHold);
-    const weeklyObj = {};
-    rawSkillLogs.forEach(l => {
-      if (!weeklyObj[l.weekStart]) weeklyObj[l.weekStart] = { best: 0, sum: 0, count: 0 };
-      weeklyObj[l.weekStart].best = Math.max(weeklyObj[l.weekStart].best, l.hold_seconds || 0);
-      weeklyObj[l.weekStart].sum += (l.hold_seconds || 0);
-      weeklyObj[l.weekStart].count++;
-    });
-    return Object.keys(weeklyObj).sort().slice(-4).map(w => ({
-      week: w.split('-').slice(1).join('/'),
-      best: weeklyObj[w].best,
-      avg: Math.round(weeklyObj[w].sum / weeklyObj[w].count) || 0
-    }));
-  }, [normalizedLogs, skillChartEx]);
+    const { skillChartData, allTimeBest, maxSession } = useMemo(() => {
+    const skillLogs = logs.filter(l => l.exercise === skillChartEx && (l.hold_seconds || 0) > 0);
+    const best = skillLogs.reduce((max, l) => Math.max(max, l.hold_seconds || 0), 0);
+    const sessionData = skillLogs
+      .reduce((acc, l) => {
+        const existing = acc.find(s => s.date === l.date);
+        if (existing) {
+          existing.best = Math.max(existing.best, l.hold_seconds || 0);
+        } else {
+          acc.push({ date: l.date, best: l.hold_seconds || 0 });
+        }
+        return acc;
+      }, [])
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(s => {
+        const parts = s.date.split('-').map(Number);
+        return {
+          ...s,
+          label: new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+        };
+      });
+    const max = sessionData.reduce((m, s) => s.best > (m?.best ?? 0) ? s : m, null);
+    return { skillChartData: sessionData, allTimeBest: best, maxSession: max };
+  }, [logs, skillChartEx]);
 
   // Rest Efficiency
   const restData = useMemo(() => {
@@ -208,18 +230,23 @@ export default function Dashboard() {
     }, {});
   }, [logs]);
 
-  const thisMonthFreq = useMemo(() => {
-    const sm = startOfMonth();
-    const monthLogs = logs.filter(l => new Date(l.date) >= sm);
+  const monthlyWorkouts = useMemo(() => {
+    const monthLogs = logs.filter(l => {
+      const parts = (l.date || '').split('-');
+      if (parts.length < 2) return false;
+      const y = parseInt(parts[0]);
+      const m = parseInt(parts[1]);
+      return y === calendarYear && m === (calendarMonth + 1);
+    });
     return categoriesList.reduce((acc, cat) => {
       acc[cat] = new Set(monthLogs.filter(l => l.category === cat).map(l => l.date)).size;
       return acc;
     }, {});
-  }, [logs]);
+  }, [logs, calendarYear, calendarMonth]);
 
   // 8. Last workout summary
   const lastWorkoutDetails = useMemo(() => {
-    if (!logs.length) return null;
+    if (!logs || logs.length === 0) return null;
     const sorted = [...logs].sort((a, b) => new Date(b.date) - new Date(a.date));
     const lastSessionDate = sorted[0]?.date;
     const sessionLogs = logs.filter(l => l.date === lastSessionDate);
@@ -228,14 +255,15 @@ export default function Dashboard() {
     // Format date as "27 March"
     let formattedDate = lastSessionDate;
     try {
-      const d = new Date(lastSessionDate + 'T12:00:00');
-      formattedDate = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+      const dateObj = new Date(lastSessionDate + 'T12:00:00');
+      formattedDate = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
     } catch(e) {}
 
     return {
       date: formattedDate,
       category: lastCategory,
-      sets: sessionLogs.length
+      sets: sessionLogs.length,
+      reps: sessionLogs.reduce((sum, l) => sum + (l.reps || 0), 0)
     };
   }, [logs]);
 
@@ -297,9 +325,29 @@ export default function Dashboard() {
 
         {/* 2. Consistency */}
         <section className="md:col-span-12 bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 shadow-sm">
-           <div className="flex justify-between items-center mb-8">
-              <h3 style={{ fontSize: '22px', fontWeight: 700, fontFamily: 'inherit' }} className="font-headline tracking-tighter">Consistency</h3>
-              <div className="px-3 py-1 border border-[#1D9E75]/30 rounded-full text-[12px] font-medium text-[#1D9E75] bg-transparent">{currentStreak} day streak</div>
+           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Consistency</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="px-3 py-1 border border-[#1D9E75]/30 rounded-full text-[12px] font-medium text-[#1D9E75] bg-transparent mr-2">{currentStreak} day streak</div>
+                <button
+                  onClick={() => {
+                    if (calendarMonth === 0) { setCalendarMonth(11); setCalendarYear(y => y - 1); }
+                    else setCalendarMonth(m => m - 1);
+                  }}
+                  style={{ background: 'none', border: '1px solid var(--color-border-secondary, #e0e3e5)', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '16px', color: 'var(--color-text-secondary, #73777f)' }}
+                >‹</button>
+                <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '90px', textAlign: 'center' }}>
+                  {new Date(calendarYear, calendarMonth).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+                </span>
+                <button
+                  onClick={() => {
+                    if (calendarMonth === 11) { setCalendarMonth(0); setCalendarYear(y => y + 1); }
+                    else setCalendarMonth(m => m + 1);
+                  }}
+                  disabled={isCurrentMonth}
+                  style={{ background: 'none', border: '1px solid var(--color-border-secondary, #e0e3e5)', borderRadius: '8px', width: '32px', height: '32px', cursor: isCurrentMonth ? 'default' : 'pointer', fontSize: '16px', color: 'var(--color-text-secondary, #73777f)', opacity: isCurrentMonth ? 0.3 : 1 }}
+                >›</button>
+              </div>
            </div>
            
            <div className="max-w-sm mx-auto mb-10">
@@ -312,9 +360,40 @@ export default function Dashboard() {
                 ))}
               </div>
               <div className="grid grid-cols-7 gap-1.5">
-                {heatmapData.map((d, i) => d ? (
-                  <div key={i} title={d.date} className={`aspect-square rounded-lg flex items-center justify-center text-[11px] font-black transition-all ${d.hasWorkout ? 'bg-primary text-on-primary scale-105 shadow-md shadow-primary/10' : 'bg-surface-container-high text-on-surface-variant/20'}`}>{d.label}</div>
-                ) : <div key={i} className="aspect-square" />)}
+                {heatmapData.map((d, i) => {
+                  if (!d) return <div key={i} className="aspect-square" />;
+                  
+                  const todayDay = new Date().getDate();
+                  const isToday = isCurrentMonth && d.label === todayDay;
+                  const isTrained = d.hasWorkout;
+                  
+                  // Background priority: today > trained > untrained
+                  const cellBackground = isToday
+                    ? 'rgba(29, 158, 117, 0.25)' // light green tint
+                    : isTrained
+                    ? '#1D9E75' // primary green
+                    : '#E8E8E8'; // inactive gray
+
+                  const cellTextColor = (isToday && !isTrained)
+                    ? '#1D9E75' // green text on tint
+                    : isTrained
+                    ? '#ffffff'
+                    : 'rgba(0,0,0,0.2)'; // muted gray for numbers
+
+                  return (
+                    <div 
+                      key={i} 
+                      title={d.date} 
+                      style={{ 
+                        backgroundColor: cellBackground, 
+                        color: cellTextColor 
+                      }} 
+                      className={`aspect-square rounded-lg flex items-center justify-center text-[11px] font-black transition-all ${isTrained && !isToday ? 'scale-105 shadow-md shadow-primary/10' : ''}`}
+                    >
+                      {d.label}
+                    </div>
+                  );
+                })}
               </div>
            </div>
 
@@ -353,36 +432,38 @@ export default function Dashboard() {
                   border-color: #1D9E75;
                 }
                 .freq-badge.inactive {
-                  background: transparent;
-                  color: var(--color-text-secondary, #73777f);
-                  opacity: 0.4;
+                  background: #E8E8E8;
+                  color: rgba(0,0,0,0.4);
+                  border: none;
                 }
               `}</style>
 
               {/* Category frequency */}
-              <div className="freq-row">
-                <span className="freq-label">This week</span>
-                <div className="freq-badges">
-                  {categoriesList.map(cat => (
-                    <div
-                      key={cat}
-                      className={`freq-badge ${thisWeekFreq[cat] > 0 ? 'active' : 'inactive'}`}
-                    >
-                      {cat} {thisWeekFreq[cat]}
-                    </div>
-                  ))}
+              {isCurrentMonth && (
+                <div className="freq-row">
+                  <span className="freq-label">This week</span>
+                  <div className="freq-badges">
+                    {categoriesList.map(cat => (
+                      <div
+                        key={cat}
+                        className={`freq-badge ${thisWeekFreq[cat] > 0 ? 'active' : 'inactive'}`}
+                      >
+                        {cat} {thisWeekFreq[cat]}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="freq-row">
-                <span className="freq-label">This month</span>
+                <span className="freq-label">Monthly workouts</span>
                 <div className="freq-badges">
                   {categoriesList.map(cat => (
                     <div
                       key={cat}
-                      className={`freq-badge ${thisMonthFreq[cat] > 0 ? 'active' : 'inactive'}`}
+                      className={`freq-badge ${monthlyWorkouts[cat] > 0 ? 'active' : 'inactive'}`}
                     >
-                      {cat} {thisMonthFreq[cat]}
+                      {cat} {monthlyWorkouts[cat]}
                     </div>
                   ))}
                 </div>
@@ -422,19 +503,25 @@ export default function Dashboard() {
 
         {/* 3. Muscle Balance Radar */}
         <section className="md:col-span-12 bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 shadow-sm flex flex-col items-center">
-            <h3 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter w-full text-left mb-6">Muscle balance</h3>
-            <div className="w-full h-[320px]">
-                <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius={100} data={radarData}>
-                        <PolarGrid stroke="#e0e3e5" />
-                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#73777f', fontSize: 11, fontWeight: 600 }} />
+             <h3 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter w-full text-left">Muscle balance</h3>
+             <p style={{ fontSize: '12px', color: 'var(--color-text-secondary, #73777f)', margin: '2px 0 16px', fontWeight: 400, width: '100%', textAlign: 'left' }}>
+               Training days per category — last 30 days
+             </p>
+             <div className="w-full h-[360px]">
+                 <ResponsiveContainer width="100%" height="100%">
+                     <RadarChart cx="50%" cy="50%" margin={{ top: 50, right: 40, bottom: 30, left: 40 }} outerRadius={90} data={radarData}>
+                         <PolarGrid stroke="#e0e3e5" />
+                         <PolarAngleAxis 
+                           dataKey="subject" 
+                           tick={{ fontSize: 13, fontWeight: 600, fill: 'var(--color-text-primary, #191c1e)' }}
+                         />
                         <Tooltip 
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
-                              const data = payload[0].payload;
+                              const d = payload[0].payload;
                               return (
                                 <div className="bg-white p-3 rounded-xl border border-outline-variant/20 shadow-xl text-xs font-bold text-on-surface">
-                                  {data.subject} — {data.rawValue} days this month
+                                  {d.subject} — {d.rawValue} days this month
                                 </div>
                               );
                             }
@@ -443,19 +530,66 @@ export default function Dashboard() {
                         />
                         <Radar name="Training Balance" dataKey="normalized" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
                     </RadarChart>
-                </ResponsiveContainer>
-            </div>
+                 </ResponsiveContainer>
+             </div>
+
+             {/* External 2x2 Legend */}
+             <div style={{
+               display: 'grid',
+               gridTemplateColumns: '1fr 1fr',
+               gap: '8px 24px',
+               marginTop: '16px',
+               padding: '0 16px',
+               width: '100%'
+             }}>
+               {radarData.map(item => (
+                 <div key={item.subject} style={{
+                   display: 'flex',
+                   justifyContent: 'space-between',
+                   alignItems: 'center',
+                   padding: '6px 0',
+                   borderBottom: '0.5px solid var(--color-border-tertiary, #e0e3e5)',
+                 }}>
+                   <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary, #191c1e)' }}>
+                     {item.subject}
+                   </span>
+                   <span style={{ fontSize: '13px', fontWeight: 600, color: item.rawValue > 0 ? '#1D9E75' : 'var(--color-text-secondary, #73777f)' }}>
+                     {item.rawValue} {item.rawValue === 1 ? 'day' : 'days'}
+                   </span>
+                 </div>
+               ))}
+             </div>
         </section>
 
         {/* 4. Skill Progression */}
         <section className="md:col-span-12 bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 shadow-sm">
-            <div className="flex justify-between items-center mb-8">
-                <h3 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter">Skills</h3>
-                <select value={skillChartEx} onChange={e => setSkillChartEx(e.target.value)} className="bg-surface border border-outline-variant/10 rounded-xl text-[10px] font-black uppercase px-4 py-2 outline-none focus:ring-2 focus:ring-primary/20">
-                    {holdExercises.map(ex => <option key={ex}>{ex}</option>)}
-                </select>
-            </div>
-            <div className="h-64 w-full">
+             <div className="flex justify-between items-center mb-8">
+                 <h3 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter">Skills</h3>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {allTimeBest > 0 && (
+                          <div style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              background: 'rgba(29,158,117,0.1)',
+                              border: '1px solid rgba(29,158,117,0.2)',
+                              borderRadius: '12px',
+                              padding: '6px 14px',
+                          }}>
+                              <span style={{ fontSize: '10px', fontWeight: 600, color: '#1D9E75', letterSpacing: '0.05em' }}>
+                                  Personal best
+                              </span>
+                              <span style={{ fontSize: '18px', fontWeight: 700, color: '#1D9E75', lineHeight: 1.2 }}>
+                                  {allTimeBest}s
+                              </span>
+                          </div>
+                      )}
+                     <select value={skillChartEx} onChange={e => setSkillChartEx(e.target.value)} style={{ width: 'auto', minWidth: '120px' }} className="bg-surface border border-outline-variant/10 rounded-xl text-[10px] font-black uppercase px-4 py-2 outline-none focus:ring-2 focus:ring-primary/20">
+                         {holdExercises.map(ex => <option key={ex}>{ex}</option>)}
+                     </select>
+                 </div>
+             </div>
+             <div style={{ height: '260px', width: '100%' }}>
                 {skillChartData.length === 0 ? (
                   <div style={{
                     display: 'flex',
@@ -474,13 +608,46 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={skillChartData}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e3e5" />
-                          <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#73777f' }} />
-                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#73777f' }} />
-                          <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                          <Line type="stepAfter" dataKey="best" name="Weekly Best" stroke="#10b981" strokeWidth={5} dot={{ r: 6, fill: '#10b981' }} />
-                          <Line type="monotone" dataKey="avg" name="Weekly Avg" stroke="#73777f" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                      <LineChart data={skillChartData} margin={{ top: 24, right: 20, bottom: 0, left: 0 }}>
+                           <CartesianGrid stroke="rgba(0,0,0,0.05)" vertical={false} strokeDasharray="0" />
+                           <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#73777f' }} />
+                           <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#73777f' }} tickFormatter={v => `${v}s`} />
+                           <Tooltip 
+                             formatter={(value, name) => [`${value}s`, name]}
+                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
+                           />
+                           {allTimeBest > 0 && (
+                             <ReferenceLine 
+                               y={allTimeBest} 
+                               stroke="#10b981" 
+                               strokeDasharray="4 4" 
+                               strokeWidth={1} 
+                               opacity={0.4} 
+                               label={{ value: `PB ${allTimeBest}s`, position: 'right', fontSize: 10, fill: '#10b981' }} 
+                             />
+                           )}
+                           <Line 
+                             type="monotone" 
+                             dataKey="best" 
+                             name="Best hold" 
+                             stroke="#10b981" 
+                             strokeWidth={2.5} 
+                             activeDot={{ r: 5 }} 
+                             dot={(props) => {
+                               const { cx, cy, payload } = props;
+                               const isMax = payload.date === maxSession?.date;
+                               return (
+                                 <g key={`dot-${payload.date}`}>
+                                   <circle cx={cx} cy={cy} r={isMax ? 5 : 3} fill="#10b981" strokeWidth={0} />
+                                   {isMax && (
+                                     <text x={cx} y={cy - 12} textAnchor="middle" fontSize={11} fontWeight={700} fill="#10b981">
+                                       {payload.best}
+                                     </text>
+                                   )}
+                                 </g>
+                               );
+                             }}
+                           />
                       </LineChart>
                   </ResponsiveContainer>
                 )}

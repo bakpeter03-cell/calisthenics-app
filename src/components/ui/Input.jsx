@@ -2,7 +2,7 @@ export function Input({ label, error, className = "", containerClassName = "", o
   return (
     <div className={`space-y-1 ${containerClassName}`}>
       {label && (
-        <label className="block font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">
+        <label className="block font-label text-[10px] font-bold text-on-surface-variant ml-1">
           {label}
         </label>
       )}

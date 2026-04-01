@@ -155,9 +155,9 @@ export default function AddWorkout() {
 
       {/* Date Picker Button */}
       <div className="flex justify-between items-center bg-surface-container-low p-4 rounded-xl border border-outline-variant/20 mb-4 shadow-sm">
-        <label className="font-bold text-[11px] text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
+        <label style={{ fontFamily: "'Inter', sans-serif" }} className="font-bold text-[11px] text-on-surface-variant tracking-widest flex items-center gap-2">
           <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-          Workout Date
+          Workout date
         </label>
         <input 
           type="date" 
@@ -172,7 +172,7 @@ export default function AddWorkout() {
           <button
             key={cat}
             onClick={() => handleCategoryChange(cat)}
-            className={`flex-1 py-3 px-4 rounded-xl font-bold text-center uppercase tracking-wide text-sm ${
+            className={`flex-1 py-3 px-4 rounded-xl font-bold text-center tracking-wide text-sm ${
               category === cat 
                 ? 'bg-primary text-on-primary shadow-md' 
                 : 'bg-transparent border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-low'
@@ -186,11 +186,11 @@ export default function AddWorkout() {
       <Card className="space-y-6">
         <div className="space-y-4">
           <div className="relative group">
-             <label className="block font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 ml-1">Exercise</label>
+             <label style={{ fontFamily: "'Inter', sans-serif" }} className="block font-label text-[10px] font-bold tracking-widest text-on-surface-variant mb-1 ml-1">Exercise</label>
              <select 
                value={exercise} 
                onChange={e => setExercise(e.target.value)}
-               className="w-full bg-surface-container-low border border-outline-variant/10 focus:border-secondary focus:bg-secondary/5 rounded-xl px-4 py-3 focus:ring-0 text-on-surface font-bold transition-colors uppercase tracking-wide"
+               className="w-full bg-surface-container-low border border-outline-variant/10 focus:border-secondary focus:bg-secondary/5 rounded-xl px-4 py-3 focus:ring-0 text-on-surface font-bold transition-colors tracking-wide"
              >
                {EXERCISES[category].map(ex => <option key={ex} value={ex}>{ex}</option>)}
              </select>
@@ -257,10 +257,9 @@ export default function AddWorkout() {
 
       <section className="space-y-6 mt-8">
         <div className="flex justify-between items-end px-1 mb-2">
-          <h2 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter text-on-surface">
+          <h2 style={{ fontSize: '22px', fontWeight: 700, fontFamily: "'Inter', sans-serif" }} className="font-headline tracking-tighter text-on-surface">
             {isToday ? "Today's workout" : "Logged for " + date.split('-').reverse().join('/')}
           </h2>
-          <span className="font-bold text-sm text-primary tracking-wide uppercase mb-1">{targetLogs.length} total</span>
         </div>
         
         {Object.keys(groupedTodaysLogs).length === 0 ? (
@@ -270,106 +269,129 @@ export default function AddWorkout() {
             {Object.keys(groupedTodaysLogs).map(ex => {
               const exLogs = groupedTodaysLogs[ex];
               const totalReps = exLogs.reduce((sum, l) => sum + l.reps, 0);
-              const totalWorkload = exLogs.reduce((sum, l) => sum + ((72 + (l.weight||0)) * l.reps), 0);
               const avgReps = exLogs.length ? Math.round(totalReps / exLogs.length) : 0;
               const bestSetReps = exLogs.length ? Math.max(...exLogs.map(l => l.reps)) : 0;
               const prevStats = getPrevSessionStats(ex);
 
               return (
-              <div key={ex} className="space-y-3 bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/20 shadow-sm">
-                <div className="flex flex-col mb-4">
-                  <h4 className="font-black text-[22px] text-primary flex items-center gap-2 uppercase tracking-tight leading-none">
-                    <span className="material-symbols-outlined text-[24px]">bolt</span>
-                    {ex}
-                  </h4>
-                  
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-4 gap-2 mt-4 text-center">
-                    <div className="bg-surface-container-low p-2 rounded-lg flex flex-col justify-center">
-                      <p className="text-[9px] uppercase font-black tracking-widest text-on-surface-variant mb-0.5">Sets</p>
-                      <p className="font-black text-on-surface text-lg leading-none">{exLogs.length}</p>
+                <div key={ex} className="space-y-3 bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/20 shadow-sm">
+                  <div className="flex flex-col mb-4">
+                    <h4 style={{ fontFamily: "'Inter', sans-serif" }} className="font-black text-[22px] text-primary flex items-center gap-2 tracking-tight leading-none">
+                      {ex}
+                    </h4>
+                    
+                    {/* Stats Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '12px', marginTop: '16px' }}>
+                      <div style={{ background: 'var(--color-background-secondary, #f1f3f4)', border: '0.5px solid var(--color-border-tertiary, #e0e3e5)', borderRadius: '8px', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', flex: 1 }}>
+                        <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-secondary)', fontFamily: "'Inter', sans-serif" }}>
+                          Sets
+                        </span>
+                        <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-primary)', fontFamily: "'Inter', sans-serif" }}>
+                          {exLogs.length}
+                        </span>
+                      </div>
+                      <div style={{ background: 'var(--color-background-secondary, #f1f3f4)', border: '0.5px solid var(--color-border-tertiary, #e0e3e5)', borderRadius: '8px', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', flex: 1 }}>
+                        <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-secondary)', fontFamily: "'Inter', sans-serif" }}>
+                          Avg reps
+                        </span>
+                        <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-primary)', fontFamily: "'Inter', sans-serif" }}>
+                          {avgReps}
+                        </span>
+                      </div>
+                      <div style={{ background: 'var(--color-background-secondary, #f1f3f4)', border: '0.5px solid var(--color-border-tertiary, #e0e3e5)', borderRadius: '8px', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', flex: 1 }}>
+                        <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-secondary)', fontFamily: "'Inter', sans-serif" }}>
+                          Total reps
+                        </span>
+                        <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-primary)', fontFamily: "'Inter', sans-serif" }}>
+                          {totalReps}
+                        </span>
+                      </div>
+                      <div style={{ background: 'var(--color-background-secondary, #f1f3f4)', border: '0.5px solid var(--color-border-tertiary, #e0e3e5)', borderRadius: '8px', padding: '10px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', flex: 1 }}>
+                        <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-text-secondary)', fontFamily: "'Inter', sans-serif" }}>
+                          Best
+                        </span>
+                        <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-primary)', fontFamily: "'Inter', sans-serif" }}>
+                          {bestSetReps}
+                        </span>
+                      </div>
                     </div>
-                    <div className="bg-surface-container-low p-2 rounded-lg flex flex-col justify-center">
-                      <p className="text-[9px] uppercase font-black tracking-widest text-on-surface-variant mb-0.5">Avg Reps</p>
-                      <p className="font-black text-on-surface text-lg leading-none">{avgReps}</p>
-                    </div>
-                    <div className="bg-surface-container-low p-2 rounded-lg flex flex-col justify-center">
-                      <p className="text-[9px] uppercase font-black tracking-widest text-on-surface-variant mb-0.5">Total Reps</p>
-                      <p className="font-black text-on-surface text-lg leading-none">{totalReps}</p>
-                    </div>
-                    <div className="bg-surface-container-low p-2 rounded-lg flex flex-col justify-center">
-                      <p className="text-[9px] uppercase font-black tracking-widest text-on-surface-variant mb-0.5">Best</p>
-                      <p className="font-black text-on-surface text-lg leading-none">{bestSetReps}</p>
-                    </div>
+
+                    {/* Previous Session Comp */}
+                    {prevStats && (
+                      <div className="mt-3 bg-surface px-4 py-3 rounded-xl border border-surface-variant/40 flex justify-between items-center text-xs shadow-sm">
+                         <span className="font-bold text-on-surface-variant">Last: {prevStats.sets} sets, {prevStats.reps} reps</span>
+                         <span style={{ fontFamily: "'Inter', sans-serif" }} className={`font-black ${totalReps > prevStats.reps ? 'text-primary' : totalReps < prevStats.reps ? 'text-error' : 'text-on-surface-variant/50'}`}>
+                           {totalReps > prevStats.reps ? `+${totalReps - prevStats.reps}` : totalReps - prevStats.reps === 0 ? '' : totalReps - prevStats.reps} reps vs last session
+                         </span>
+                      </div>
+                    )}
                   </div>
+                  
+                  <div className="flex flex-col space-y-2">
+                    {exLogs.map((log, listIdx) => (
+                      <div key={log.id} className="flex justify-between items-center py-3 px-4 bg-white dark:bg-surface-container-low rounded-xl border border-surface-variant/40 group hover:border-secondary/40 transition-colors shadow-sm">
+                        {/* SET */}
+                        <div className="w-20 text-left">
+                          <span style={{ fontFamily: "'Inter', sans-serif" }} className="font-black text-[18px] text-primary tracking-tight">
+                            Set {listIdx + 1}
+                          </span>
+                        </div>
+                        
+                        {/* REPS */}
+                        <div className="flex-1 flex justify-center">
+                          {(log.reps > 0 || !log.hold_seconds) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                              <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-primary)', fontFamily: "'Inter', sans-serif" }}>
+                                {log.reps || 0}
+                              </span>
+                              <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: '400', fontFamily: "'Inter', sans-serif" }}>
+                                Reps
+                              </span>
+                            </div>
+                          )}
+                        </div>
 
-                  {/* Previous Session Comp */}
-                  {prevStats && (
-                    <div className="mt-3 bg-surface px-4 py-3 rounded-xl border border-surface-variant/40 flex justify-between items-center text-xs shadow-sm">
-                       <span className="font-bold text-on-surface-variant">Last: {prevStats.sets} sets, {prevStats.reps} reps</span>
-                       <span className={`font-black tracking-widest uppercase ${totalReps >= prevStats.reps ? 'text-primary' : 'text-error'}`}>
-                         Change: {totalReps >= prevStats.reps ? '+' : ''}{totalReps - prevStats.reps}
-                       </span>
-                    </div>
-                  )}
+                        {/* HOLD */}
+                        <div className="flex-1 flex justify-center">
+                          {log.hold_seconds > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                              <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-primary)', fontFamily: "'Inter', sans-serif" }}>
+                                {log.hold_seconds}s
+                              </span>
+                              <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: '400', fontFamily: "'Inter', sans-serif" }}>
+                                Hold
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* WEIGHT */}
+                        <div className="flex-1 flex justify-center">
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                            <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--color-text-primary)', fontFamily: "'Inter', sans-serif" }}>
+                              {log.weight > 0 ? `+${log.weight}kg` : 'BW'}
+                            </span>
+                            <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', fontWeight: '400', fontFamily: "'Inter', sans-serif" }}>
+                              Weight
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* ACTIONS */}
+                        <div className="w-16 flex justify-end gap-1">
+                          <button onClick={() => handleEdit(log)} className="text-outline-variant hover:text-secondary transition-colors p-1.5 rounded-lg hover:bg-surface-container-highest">
+                            <span className="material-symbols-outlined text-[18px]">edit</span>
+                          </button>
+                          <button onClick={() => deleteLog(log.id)} className="text-outline-variant hover:text-error transition-colors p-1.5 rounded-lg hover:bg-surface-container-highest">
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                
-                <div className="flex flex-col space-y-2">
-                  {exLogs.map((log, listIdx) => (
-                    <div key={log.id} className="flex justify-between items-center py-3 px-4 bg-white dark:bg-surface-container-low rounded-xl border border-surface-variant/40 group hover:border-secondary/40 transition-colors shadow-sm">
-                      {/* SET */}
-                      <div className="w-20 text-left">
-                        <span className="font-black text-[20px] text-primary tracking-tight uppercase">
-                          SET {listIdx + 1}
-                        </span>
-                      </div>
-                      
-                      {/* REPS */}
-                      <div className="flex-1 text-center flex flex-col items-center justify-center">
-                         <span className="font-black text-[20px] text-on-surface leading-none block mb-0.5">
-                           {log.reps || 0}
-                         </span>
-                         <span className="text-[9px] font-black text-on-surface-variant tracking-widest uppercase">
-                           REPS
-                         </span>
-                      </div>
-
-                      {/* HOLD */}
-                      <div className="flex-1 text-center flex flex-col items-center justify-center">
-                         <span className="font-black text-[20px] text-on-surface leading-none block mb-0.5">
-                           {`${log.hold_seconds || 0}s`}
-                         </span>
-                         <span className="text-[9px] font-black text-on-surface-variant tracking-widest uppercase">
-                           HOLD
-                         </span>
-                      </div>
-
-                      {/* WEIGHT */}
-                      <div className="flex-1 text-center flex flex-col items-center">
-                        {log.weight > 0 ? (
-                          <span className="font-black text-[20px] text-on-surface leading-none block mb-0.5">+{log.weight}<span className="text-[10px] text-on-surface-variant ml-0.5">KG</span></span>
-                        ) : (
-                          <span className="font-black text-[14px] text-on-surface-variant/60 uppercase block pt-1 mb-0.5">BW</span>
-                        )}
-                        <span className="text-[9px] font-black text-on-surface-variant tracking-widest uppercase mt-0.5">
-                          WEIGHT
-                        </span>
-                      </div>
-
-                      {/* ACTIONS */}
-                      <div className="w-16 flex justify-end gap-1">
-                        <button onClick={() => handleEdit(log)} className="text-outline-variant hover:text-secondary transition-colors p-1.5 rounded-lg hover:bg-surface-container-highest">
-                          <span className="material-symbols-outlined text-[18px]">edit</span>
-                        </button>
-                        <button onClick={() => deleteLog(log.id)} className="text-outline-variant hover:text-error transition-colors p-1.5 rounded-lg hover:bg-surface-container-highest">
-                          <span className="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )})}
+              );
+            })}
           </div>
         )}
       </section>
