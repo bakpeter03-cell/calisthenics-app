@@ -325,30 +325,39 @@ export default function Dashboard() {
 
         {/* 2. Consistency */}
         <section className="md:col-span-12 bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 shadow-sm">
-           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Consistency</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ whiteSpace: 'nowrap' }} className="px-3 py-1 border border-[#1D9E75]/30 rounded-full text-[12px] font-medium text-[#1D9E75] bg-transparent mr-2">{currentStreak} day{currentStreak !== 1 ? 's' : ''} streak</div>
-                <button
-                  onClick={() => {
-                    if (calendarMonth === 0) { setCalendarMonth(11); setCalendarYear(y => y - 1); }
-                    else setCalendarMonth(m => m - 1);
-                  }}
-                  style={{ background: 'none', border: '1px solid var(--color-border-secondary, #e0e3e5)', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '16px', color: 'var(--color-text-secondary, #73777f)' }}
-                >‹</button>
-                <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '90px', textAlign: 'center' }}>
-                  {new Date(calendarYear, calendarMonth).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
-                </span>
-                <button
-                  onClick={() => {
-                    if (calendarMonth === 11) { setCalendarMonth(0); setCalendarYear(y => y + 1); }
-                    else setCalendarMonth(m => m + 1);
-                  }}
-                  disabled={isCurrentMonth}
-                  style={{ background: 'none', border: '1px solid var(--color-border-secondary, #e0e3e5)', borderRadius: '8px', width: '32px', height: '32px', cursor: isCurrentMonth ? 'default' : 'pointer', fontSize: '16px', color: 'var(--color-text-secondary, #73777f)', opacity: isCurrentMonth ? 0.3 : 1 }}
-                >›</button>
-              </div>
-           </div>
+            <div style={{ marginBottom: '16px' }}>
+                {/* Row 1: Title + navigation */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <h3 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Consistency</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                            onClick={() => {
+                                if (calendarMonth === 0) { setCalendarMonth(11); setCalendarYear(y => y - 1); }
+                                else setCalendarMonth(m => m - 1);
+                            }}
+                            style={{ background: 'none', border: '1px solid var(--color-border-secondary, #e0e3e5)', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '16px', color: 'var(--color-text-secondary, #73777f)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >‹</button>
+                        <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '90px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            {new Date(calendarYear, calendarMonth).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+                        </span>
+                        <button
+                            onClick={() => {
+                                if (calendarMonth === 11) { setCalendarMonth(0); setCalendarYear(y => y + 1); }
+                                else setCalendarMonth(m => m + 1);
+                            }}
+                            disabled={isCurrentMonth}
+                            style={{ background: 'none', border: '1px solid var(--color-border-secondary, #e0e3e5)', borderRadius: '8px', width: '32px', height: '32px', cursor: isCurrentMonth ? 'default' : 'pointer', fontSize: '16px', color: 'var(--color-text-secondary, #73777f)', opacity: isCurrentMonth ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >›</button>
+                    </div>
+                </div>
+
+                {/* Row 2: Streak badge */}
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{ whiteSpace: 'nowrap', color: '#016c48', border: '1px solid #016c48', background: 'rgba(1,108,72,0.08)', borderRadius: '9999px', padding: '4px 12px', fontSize: '12px', fontWeight: 500, marginRight: '8px' }}>
+                        {currentStreak} day{currentStreak !== 1 ? 's' : ''} streak
+                    </div>
+                </div>
+            </div>
            
            <div className="max-w-sm mx-auto mb-10">
               {/* Day Labels */}
@@ -369,16 +378,16 @@ export default function Dashboard() {
                   
                   // Background priority: today > trained > untrained
                   const cellBackground = isToday
-                    ? 'rgba(29, 158, 117, 0.25)' // light green tint
+                    ? 'rgba(1, 108, 72, 0.2)' // light green tint
                     : isTrained
-                    ? '#1D9E75' // primary green
+                    ? '#016c48' // primary green
                     : '#E8E8E8'; // inactive gray
 
                   const cellTextColor = (isToday && !isTrained)
-                    ? '#1D9E75' // green text on tint
+                    ? '#016c48' // green text on tint
                     : isTrained
                     ? '#ffffff'
-                    : 'rgba(0,0,0,0.2)'; // muted gray for numbers
+                    : 'rgba(0,0,0,0.4)'; // muted gray for numbers
 
                   return (
                     <div 
@@ -427,9 +436,9 @@ export default function Dashboard() {
                   white-space: nowrap;
                 }
                 .freq-badge.active {
-                  background: #1D9E75;
+                  background: #016c48;
                   color: #ffffff;
-                  border-color: #1D9E75;
+                  border-color: #016c48;
                 }
                 .freq-badge.inactive {
                   background: #E8E8E8;
@@ -565,16 +574,17 @@ export default function Dashboard() {
         <section className="md:col-span-12 bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 shadow-sm">
              <div className="flex justify-between items-center mb-8">
                  <h3 style={{ fontSize: '22px', fontWeight: 700 }} className="font-headline tracking-tighter">Skills</h3>
-                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                 <div style={{ display: 'flex', alignItems: 'stretch', gap: '8px' }}>
                       {allTimeBest > 0 && (
                           <div style={{
                               display: 'flex',
                               flexDirection: 'column',
                               alignItems: 'center',
+                              justifyContent: 'center',
                               background: 'rgba(29,158,117,0.1)',
                               border: '1px solid rgba(29,158,117,0.2)',
                               borderRadius: '12px',
-                              padding: '6px 14px',
+                              padding: '0 14px',
                           }}>
                               <span style={{ fontSize: '10px', fontWeight: 600, color: '#1D9E75', letterSpacing: '0.05em' }}>
                                   Personal best

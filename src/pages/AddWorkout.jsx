@@ -168,18 +168,30 @@ export default function AddWorkout() {
       </div>
 
       <nav className="flex justify-between gap-2 overflow-x-auto pb-2 no-scrollbar">
-        {Object.keys(EXERCISES).map(cat => (
-          <button
-            key={cat}
-            onClick={() => handleCategoryChange(cat)}
-            className={`flex-1 py-3 px-4 rounded-xl font-bold text-center tracking-wide text-sm ${category === cat
-                ? 'bg-primary text-on-primary shadow-md'
-                : 'bg-transparent border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-low'
-              }`}
-          >
-            {cat}
-          </button>
-        ))}
+        {Object.keys(EXERCISES).map(cat => {
+          const isActive = category === cat;
+          return (
+            <button
+              key={cat}
+              onClick={() => handleCategoryChange(cat)}
+              style={{
+                flex: 1,
+                padding: '8px 16px',
+                borderRadius: '12px',
+                fontSize: '12px',
+                fontWeight: 700,
+                border: isActive ? '2px solid #016c48' : '2px solid rgba(0,0,0,0.15)',
+                cursor: 'pointer',
+                transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+                whiteSpace: 'nowrap',
+                background: isActive ? '#016c48' : 'transparent',
+                color: isActive ? '#ffffff' : '#444444',
+              }}
+            >
+              {cat}
+            </button>
+          );
+        })}
       </nav>
 
       <Card className="space-y-6">
@@ -248,9 +260,25 @@ export default function AddWorkout() {
               Duplicate
             </Button>
           )}
-          <Button className="flex-[2] shadow-lg shadow-secondary/20" variant="primary" onClick={handleSave}>
+          <button 
+            onClick={handleSave}
+            style={{ 
+              flex: 2, 
+              background: '#016c48', 
+              color: '#ffffff', 
+              border: 'none', 
+              borderRadius: '12px', 
+              fontWeight: 900, 
+              textTransform: 'uppercase', 
+              letterSpacing: '0.05em', 
+              fontSize: '14px',
+              padding: '12px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              cursor: 'pointer'
+            }}
+          >
             Save Set
-          </Button>
+          </button>
         </div>
       </Card>
 

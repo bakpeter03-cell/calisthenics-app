@@ -61,7 +61,8 @@ export default function PulseTimer({ onPresetChange }) {
           
           <button 
             onClick={isRunning ? pauseTimer : resumeTimer} 
-            className={`flex-[2] sm:flex-none px-10 py-3 rounded-xl font-black uppercase tracking-wider text-sm transition-all active:scale-95 shadow-sm ${isRunning ? 'bg-surface-container-highest text-on-surface' : isReady ? 'bg-primary text-on-primary' : 'bg-primary-container text-on-primary-container'}`}
+            className={`flex-[2] sm:flex-none px-10 py-3 rounded-xl font-black uppercase tracking-wider text-sm transition-all active:scale-95 shadow-sm ${isRunning ? 'bg-surface-container-highest text-on-surface' : 'text-white'}`}
+            style={!isRunning ? { backgroundColor: '#016c48' } : {}}
           >
             {isRunning ? 'Pause' : isReady ? 'Restart' : 'Resume & Start'}
           </button>

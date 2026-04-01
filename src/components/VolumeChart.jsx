@@ -427,10 +427,10 @@ export default function VolumeChart({ logs = [] }) {
               fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              border: 'none',
               cursor: 'pointer',
-              background: viewMode === mode.id ? '#1D9E75' : 'transparent',
+              background: viewMode === mode.id ? '#016c48' : 'transparent',
               color: viewMode === mode.id ? '#ffffff' : '#444444',
+              border: viewMode === mode.id ? '2px solid #016c48' : '2px solid transparent',
               transition: 'all 0.15s',
             }}
           >
@@ -463,10 +463,10 @@ export default function VolumeChart({ logs = [] }) {
               fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
-              border: 'none',
               cursor: 'pointer',
-              background: activeCategory === cat ? '#1D9E75' : 'transparent',
+              background: activeCategory === cat ? '#016c48' : 'transparent',
               color: activeCategory === cat ? '#ffffff' : '#444444',
+              border: activeCategory === cat ? '2px solid #016c48' : '2px solid transparent',
               transition: 'all 0.15s',
             }}
           >
@@ -663,16 +663,16 @@ function ExercisePill({ exercise, active, onClick }) {
     <button
       onClick={onClick}
       className={`flex items-center gap-2 px-2 py-1 rounded-md transition-all ${active
-          ? 'bg-gray-100 opacity-100'
-          : 'bg-gray-100 opacity-30 font-light'
+        ? 'bg-gray-100 opacity-100'
+        : 'bg-gray-100 opacity-30 font-light'
         }`}
     >
       <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: exercise.color }} />
       <span className="text-[12px] text-gray-600 font-normal">{exercise.name}</span>
       <span className={`text-[10px] font-bold ${isPending ? 'text-gray-400' :
-          isPositive ? 'text-green-600' :
-            isNegative ? 'text-red-500' :
-              'text-gray-400'
+        isPositive ? 'text-green-600' :
+          isNegative ? 'text-red-500' :
+            'text-gray-400'
         }`}>
         {isPending ? '' : `${vel > 0 ? '+' : ''}${Math.round(vel)}%`}
       </span>
