@@ -435,7 +435,7 @@ export default function VolumeChart({ logs = [] }) {
       })()}
 
       {/* 2. View Mode Toggle — Full Width */}
-      <div className="flex gap-2 p-1 bg-surface-container-high rounded-2xl w-full">
+      <div style={{ backgroundColor: '#E8E8E8', padding: '4px', borderRadius: '16px', display: 'flex', gap: '4px', width: '100%' }}>
         {[
           { id: 'volume', label: 'Relative volume' },
           { id: 'reps', label: 'Reps' },
@@ -444,31 +444,56 @@ export default function VolumeChart({ logs = [] }) {
           <button
             key={mode.id}
             onClick={() => { setViewMode(mode.id); }}
-            className={`flex-1 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border ${viewMode === mode.id ? 'bg-primary text-on-primary border-primary shadow-lg shadow-primary/20' : 'bg-transparent border-transparent text-on-surface-variant hover:bg-surface-container-highest'}`}
+            style={{
+              flex: 1,
+              padding: '8px 16px',
+              borderRadius: '12px',
+              fontSize: '11px',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              border: 'none',
+              cursor: 'pointer',
+              background: viewMode === mode.id ? '#1D9E75' : 'transparent',
+              color: viewMode === mode.id ? '#ffffff' : '#444444',
+              transition: 'all 0.15s',
+            }}
           >
             {mode.label}
           </button>
         ))}
       </div>
 
-      {/* 3. Category Tabs */}
+      {/* Category Tabs */}
       <div style={{
         display: 'flex',
-        gap: '8px',
+        gap: '4px',
         padding: '4px',
-        background: 'var(--md-sys-color-surface-container-high)',
-        borderRadius: '20px',
+        backgroundColor: '#E8E8E8',
+        borderRadius: '16px',
+        width: 'fit-content',
         overflowX: 'auto',
         WebkitOverflowScrolling: 'touch',
         scrollbarWidth: 'none',
-        width: '100%',
-        msOverflowStyle: 'none'
-      }} className="no-scrollbar">
+      }}>
         {['Push', 'Pull', 'Legs', 'Core'].map(cat => (
           <button
             key={cat}
-            onClick={() => { setActiveCategory(cat); setHiddenExercises(new Set()); setHintOpen(false); }}
-            className={`flex-shrink-0 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activeCategory === cat ? 'bg-primary text-on-primary shadow-lg shadow-primary/20' : 'text-on-surface-variant hover:bg-surface-container-highest'}`}
+            onClick={() => { setActiveCategory(cat); setHiddenExercises(new Set()); }}
+            style={{
+              flexShrink: 0,
+              padding: '8px 20px',
+              borderRadius: '12px',
+              fontSize: '12px',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              border: 'none',
+              cursor: 'pointer',
+              background: activeCategory === cat ? '#1D9E75' : 'transparent',
+              color: activeCategory === cat ? '#ffffff' : '#444444',
+              transition: 'all 0.15s',
+            }}
           >
             {cat}
           </button>
@@ -511,6 +536,7 @@ export default function VolumeChart({ logs = [] }) {
                     textAlign: 'left',
                     gap: '4px',
                     padding: '10px 14px',
+                    minHeight: '120px',
                     flex: 1,
                     background: 'var(--color-background-secondary, #f8f9fb)',
                     border: '1px solid var(--color-border-secondary, #e0e3e5)',
