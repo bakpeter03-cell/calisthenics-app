@@ -42,7 +42,28 @@ export function LogProvider({ children }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Refresh session when app comes back into focus (iOS PWA fix)
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUser(session.user)
+        } else {
+          // Try to refresh the token
+          const { data: { session: refreshed } } = await supabase.auth.refreshSession()
+          if (refreshed?.user) {
+            setUser(refreshed.user)
+          }
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, []);
 
   // 2. Fetch bodyweight
