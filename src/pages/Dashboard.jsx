@@ -289,33 +289,101 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Quick Review Cards */}
-        <section className="md:col-span-12 grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {[
-            { label: 'Workout days', val: ovThisWeekDays, last: ovLastWeekDays },
-            { label: 'Total reps', val: ovThisWeekReps, last: ovLastWeekReps },
-            { label: 'Workload (kg)', val: Math.round(ovThisWeekLoad).toLocaleString(), last: Math.round(ovLastWeekLoad).toLocaleString(), isNum: true }
-          ].map((s, i) => {
-            const current = typeof s.val === 'string' ? parseFloat(s.val.replace(/,/g, '')) : s.val;
-            const previous = typeof s.last === 'string' ? parseFloat(s.last.replace(/,/g, '')) : s.last;
-            const trendArrow = current > previous ? '↑' : current < previous ? '↓' : '→';
-            const trendColor = current > previous ? 'text-[#1D9E75]' : current < previous ? 'text-[#E24B4A]' : 'text-on-surface-variant/40';
+        <section className="md:col-span-12">
+          {(() => {
+            function statTrend(current, last) {
+              if (current > last) return { arrow: '↑', color: '#016c48' };
+              if (current < last) return { arrow: '↓', color: '#E24B4A' };
+              return { arrow: '→', color: 'var(--color-text-secondary)' };
+            }
+
+            const workoutDaysThisWeek = ovThisWeekDays;
+            const workoutDaysLastWeek = ovLastWeekDays;
+            const totalRepsThisWeek = ovThisWeekReps;
+            const totalRepsLastWeek = ovLastWeekReps;
+            const workloadThisWeek = Math.round(ovThisWeekLoad);
+            const workloadLastWeek = Math.round(ovLastWeekLoad);
+
+            const { arrow: trendArrow, color: trendColor } = statTrend(workoutDaysThisWeek, workoutDaysLastWeek);
+            const { arrow: repsArrow, color: repsColor } = statTrend(totalRepsThisWeek, totalRepsLastWeek);
+            const { arrow: workloadArrow, color: workloadColor } = statTrend(workloadThisWeek, workloadLastWeek);
 
             return (
-              <div key={i} className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/10 shadow-sm flex flex-col justify-between h-40 hover:border-outline-variant/30 transition-colors">
-                  <div>
-                    <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '4px', opacity: 0.6 }}>
-                      {s.label}
-                    </p>
-                    <p style={{ fontSize: '28px', fontWeight: '600', margin: '0' }} className="text-on-surface">
-                      {s.val}
-                    </p>
-                  </div>
-                  <p style={{ fontSize: '12px', marginTop: '4px' }} className={trendColor}>
-                    {trendArrow} {s.last} last week
-                  </p>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '8px',
+                marginBottom: '16px',
+              }}>
+                {/* Workout days */}
+                <div style={{
+                  background: 'var(--color-background-secondary, #f8f9fb)',
+                  border: '1px solid var(--color-border-secondary, #e0e3e5)',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+                    Workout days
+                  </span>
+                  <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                    {workoutDaysThisWeek}
+                  </span>
+                  <span style={{ fontSize: '10px', color: trendColor, fontWeight: 500 }}>
+                    {trendArrow} {workoutDaysLastWeek} last week
+                  </span>
+                </div>
+
+                {/* Total reps */}
+                <div style={{
+                  background: 'var(--color-background-secondary, #f8f9fb)',
+                  border: '1px solid var(--color-border-secondary, #e0e3e5)',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+                    Total reps
+                  </span>
+                  <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                    {totalRepsThisWeek.toLocaleString()}
+                  </span>
+                  <span style={{ fontSize: '10px', color: repsColor, fontWeight: 500 }}>
+                    {repsArrow} {totalRepsLastWeek.toLocaleString()} last week
+                  </span>
+                </div>
+
+                {/* Workload */}
+                <div style={{
+                  background: 'var(--color-background-secondary, #f8f9fb)',
+                  border: '1px solid var(--color-border-secondary, #e0e3e5)',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+                    Workload
+                  </span>
+                  <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                    {workloadThisWeek >= 1000
+                      ? (workloadThisWeek / 1000).toFixed(1) + 'k'
+                      : workloadThisWeek.toLocaleString()}
+                  </span>
+                  <span style={{ fontSize: '10px', color: workloadColor, fontWeight: 500 }}>
+                    {workloadArrow} {workloadLastWeek >= 1000
+                      ? (workloadLastWeek / 1000).toFixed(1) + 'k'
+                      : workloadLastWeek.toLocaleString()} last week
+                  </span>
+                </div>
               </div>
             );
-          })}
+          })()}
         </section>
 
         {/* 1. Volume Chart */}

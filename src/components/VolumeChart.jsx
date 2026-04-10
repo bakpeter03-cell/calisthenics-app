@@ -80,18 +80,16 @@ function intensityScore(log, bodyweight_kg) {
 }
 
 function progressionVelocity(weeklyData) {
+  // Only look at weeks that have actual data
   const nonzero = weeklyData.filter(v => v > 0);
-  if (nonzero.length < 3) return null;
-  const n = weeklyData.length;
-  const xMean = (n - 1) / 2;
-  const yMean = weeklyData.reduce((s, v) => s + v, 0) / n;
-  let num = 0, den = 0;
-  weeklyData.forEach((v, i) => {
-    num += (i - xMean) * (v - yMean);
-    den += (i - xMean) ** 2;
-  });
-  const slope = den === 0 ? 0 : num / den;
-  return yMean === 0 ? 0 : (slope / yMean) * 100;
+  if (nonzero.length < 2) return null; // need at least 2 logged weeks
+
+  // Compare most recent logged week to the one before it
+  const latest = nonzero[nonzero.length - 1];
+  const previous = nonzero[nonzero.length - 2];
+
+  if (previous === 0) return null;
+  return ((latest - previous) / previous) * 100;
 }
 
 // Helper to get starting Monday of an ISO week
@@ -372,6 +370,12 @@ export default function VolumeChart({ logs = [] }) {
           from { opacity: 0; transform: translateY(-4px); } 
           to { opacity: 1; transform: translateY(0); } 
         }
+        .recharts-wrapper:focus,
+        .recharts-wrapper:focus-visible,
+        .recharts-surface:focus,
+        .recharts-surface:focus-visible {
+          outline: none !important;
+        }
       `}</style>
 
       {/* Hint Popover */}
@@ -552,7 +556,7 @@ export default function VolumeChart({ logs = [] }) {
               const bestValue = bestHasData ? metrics.bestSetEx : '';
 
               // 3. Progressing Chip
-              const progHasData = exercises.some(ex => ex.dataPoints >= 3);
+              const progHasData = exercises.some(ex => ex.dataPoints >= 2);
               const progValue = progHasData ? `${metrics.progressingCount} of ${metrics.totalInCat} items` : '';
 
               return (
@@ -584,7 +588,10 @@ export default function VolumeChart({ logs = [] }) {
           </div>
 
           {/* 5. Chart */}
-          <div className="h-[400px] w-full pt-4">
+          <div
+            className="h-[400px] w-full pt-4"
+            style={{ outline: 'none', WebkitTapHighlightColor: 'transparent' }}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid stroke="rgba(0,0,0,0.06)" vertical={false} />
@@ -654,11 +661,6 @@ export default function VolumeChart({ logs = [] }) {
 
 
 function ExercisePill({ exercise, active, onClick }) {
-  const vel = exercise.velocity;
-  const isPending = vel === null;
-  const isPositive = vel > 5;
-  const isNegative = vel < -5;
-
   return (
     <button
       onClick={onClick}
@@ -669,13 +671,6 @@ function ExercisePill({ exercise, active, onClick }) {
     >
       <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: exercise.color }} />
       <span className="text-[12px] text-gray-600 font-normal">{exercise.name}</span>
-      <span className={`text-[10px] font-bold ${isPending ? 'text-gray-400' :
-        isPositive ? 'text-green-600' :
-          isNegative ? 'text-red-500' :
-            'text-gray-400'
-        }`}>
-        {isPending ? '' : `${vel > 0 ? '+' : ''}${Math.round(vel)}%`}
-      </span>
     </button>
   );
 }
