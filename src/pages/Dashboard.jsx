@@ -270,43 +270,54 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-500">
-      {/* Overview Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant/10 gap-4">
-        <div>
-          <h2 style={{ fontSize: '28px', fontWeight: 700 }} className="font-headline tracking-tighter text-on-surface">{welcomeText}</h2>
-          <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', fontWeight: 400, opacity: 0.6 }}>
-            {logs.length} sessions logged
-          </p>
-        </div>
-        <div className="flex gap-2">
-            <select value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="bg-surface border border-outline-variant/10 rounded-xl text-xs font-black uppercase py-2.5 pl-4 pr-10 outline-none focus:ring-2 focus:ring-primary/20">
-              <option>This Week</option>
-              <option>This Month</option>
-              <option>All Time</option>
-            </select>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Quick Review Cards */}
+        {/* Insight Cards */}
         <section className="md:col-span-12">
           {(() => {
-            function statTrend(current, last) {
-              if (current > last) return { arrow: '↑', color: '#016c48' };
-              if (current < last) return { arrow: '↓', color: '#E24B4A' };
-              return { arrow: '→', color: 'var(--color-text-secondary)' };
-            }
+            // --- Card 1: Last session ---
+            const lastLog = [...logs].sort((a, b) => b.date.localeCompare(a.date))[0];
+            const lastDate = lastLog?.date;
+            const lastCategory = lastLog?.category ?? '—';
 
-            const workoutDaysThisWeek = ovThisWeekDays;
-            const workoutDaysLastWeek = ovLastWeekDays;
-            const totalRepsThisWeek = ovThisWeekReps;
-            const totalRepsLastWeek = ovLastWeekReps;
-            const workloadThisWeek = Math.round(ovThisWeekLoad);
-            const workloadLastWeek = Math.round(ovLastWeekLoad);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const last = lastDate ? new Date(...lastDate.split('-').map((v,i) => i===1 ? Number(v)-1 : Number(v))) : null;
+            const daysAgo = last ? Math.round((today - last) / (1000 * 60 * 60 * 24)) : null;
 
-            const { arrow: trendArrow, color: trendColor } = statTrend(workoutDaysThisWeek, workoutDaysLastWeek);
-            const { arrow: repsArrow, color: repsColor } = statTrend(totalRepsThisWeek, totalRepsLastWeek);
-            const { arrow: workloadArrow, color: workloadColor } = statTrend(workloadThisWeek, workloadLastWeek);
+            const daysAgoText = daysAgo === 0 ? 'Today'
+              : daysAgo === 1 ? 'Yesterday'
+              : daysAgo === null ? 'Never'
+              : `${daysAgo} days ago`;
+
+            const daysAgoColor = 'var(--color-text-primary)';
+
+            // --- Card 2: Neglected category ---
+            const categories = ['Push', 'Pull', 'Legs', 'Core'];
+
+            const lastPerCategory = categories.map(cat => {
+              const catLogs = logs.filter(l => l.category === cat);
+              if (catLogs.length === 0) return { cat, daysAgo: 999 };
+              const catLastDate = catLogs.reduce((latest, l) => l.date > latest ? l.date : latest, '1970-01-01');
+              const catLast = new Date(...catLastDate.split('-').map((v,i) => i===1 ? Number(v)-1 : Number(v)));
+              const days = Math.round((today - catLast) / (1000 * 60 * 60 * 24));
+              return { cat, daysAgo: days };
+            });
+
+            const neglected = lastPerCategory.sort((a, b) => b.daysAgo - a.daysAgo)[0];
+            const neglectedColor = 'var(--color-text-primary)';
+
+            // --- Card 3: Days trained this week ---
+            const startOfWeek = new Date(today);
+            const dayOfWeek = startOfWeek.getDay() || 7;
+            startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek + 1);
+            startOfWeek.setHours(0, 0, 0, 0);
+
+            const thisWeekLogs = logs.filter(l => {
+              const d = new Date(...l.date.split('-').map((v,i) => i===1 ? Number(v)-1 : Number(v)));
+              return d >= startOfWeek;
+            });
+
+            const daysTrainedThisWeek = new Set(thisWeekLogs.map(l => l.date)).size;
 
             return (
               <div style={{
@@ -315,70 +326,72 @@ export default function Dashboard() {
                 gap: '8px',
                 marginBottom: '16px',
               }}>
-                {/* Workout days */}
+                {/* Card 1 — Last session */}
                 <div style={{
-                  background: 'var(--color-background-secondary, #f8f9fb)',
-                  border: '1px solid var(--color-border-secondary, #e0e3e5)',
-                  borderRadius: '10px',
-                  padding: '10px 12px',
+                  background: '#ffffff',
+                  border: '1px solid rgba(0, 0, 0, 0.08)',
+                  borderRadius: '16px',
+                  padding: '14px 16px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '4px',
+                  minHeight: '90px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                 }}>
                   <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
-                    Workout days
+                    Last session
                   </span>
-                  <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                    {workoutDaysThisWeek}
+                  <span style={{ fontSize: '20px', fontWeight: 700, color: daysAgoColor }}>
+                    {daysAgoText}
                   </span>
-                  <span style={{ fontSize: '10px', color: trendColor, fontWeight: 500 }}>
-                    {trendArrow} {workoutDaysLastWeek} last week
+                  <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                    {lastCategory}
                   </span>
                 </div>
 
-                {/* Total reps */}
+                {/* Card 2 — Category gap */}
                 <div style={{
-                  background: 'var(--color-background-secondary, #f8f9fb)',
-                  border: '1px solid var(--color-border-secondary, #e0e3e5)',
-                  borderRadius: '10px',
-                  padding: '10px 12px',
+                  background: '#ffffff',
+                  border: '1px solid rgba(0, 0, 0, 0.08)',
+                  borderRadius: '16px',
+                  padding: '14px 16px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '4px',
+                  minHeight: '90px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                 }}>
                   <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
-                    Total reps
+                    Needs attention
                   </span>
-                  <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                    {totalRepsThisWeek.toLocaleString()}
+                  <span style={{ fontSize: '20px', fontWeight: 700, color: neglectedColor }}>
+                    {neglected.cat}
                   </span>
-                  <span style={{ fontSize: '10px', color: repsColor, fontWeight: 500 }}>
-                    {repsArrow} {totalRepsLastWeek.toLocaleString()} last week
+                  <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                    {neglected.daysAgo === 999 ? 'Never trained' : `${neglected.daysAgo} days ago`}
                   </span>
                 </div>
 
-                {/* Workload */}
+                {/* Card 3 — Days trained this week */}
                 <div style={{
-                  background: 'var(--color-background-secondary, #f8f9fb)',
-                  border: '1px solid var(--color-border-secondary, #e0e3e5)',
-                  borderRadius: '10px',
-                  padding: '10px 12px',
+                  background: '#ffffff',
+                  border: '1px solid rgba(0, 0, 0, 0.08)',
+                  borderRadius: '16px',
+                  padding: '14px 16px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '4px',
+                  minHeight: '90px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                 }}>
                   <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
-                    Workload
+                    This week
                   </span>
                   <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                    {workloadThisWeek >= 1000
-                      ? (workloadThisWeek / 1000).toFixed(1) + 'k'
-                      : workloadThisWeek.toLocaleString()}
+                    {daysTrainedThisWeek} {daysTrainedThisWeek === 1 ? 'day' : 'days'}
                   </span>
-                  <span style={{ fontSize: '10px', color: workloadColor, fontWeight: 500 }}>
-                    {workloadArrow} {workloadLastWeek >= 1000
-                      ? (workloadLastWeek / 1000).toFixed(1) + 'k'
-                      : workloadLastWeek.toLocaleString()} last week
+                  <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                    trained
                   </span>
                 </div>
               </div>
