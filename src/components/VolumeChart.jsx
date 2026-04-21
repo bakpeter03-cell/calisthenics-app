@@ -162,90 +162,67 @@ export default function VolumeChart({ logs = [] }) {
     const defaultReturn = { chartData: [], exercises: [], weeksOfDataCount: 0, metrics: { currentTotal: 0, delta: 0, bestSetEx: 'None', bestSetVal: 0, progressingCount: 0, totalInCat: 0 }, isReady: false };
     if (!logs.length) return defaultReturn;
 
-    // 1. Anchor window to most recent log in category
-    const categoryLogsRaw = logs.filter(l => l.category === activeCategory);
-    if (categoryLogsRaw.length === 0) return defaultReturn;
-
-    const latestDateStr = categoryLogsRaw.reduce((latest, l) => l.date > latest ? l.date : latest, '1970-01-01');
-    const [ey, em, ed] = latestDateStr.split('-').map(Number);
-    const anchorDate = new Date(ey, em - 1, ed); // local midnight
-
-    // Window End (End of day)
-    const windowEnd = new Date(anchorDate);
-    windowEnd.setHours(23, 59, 59, 999);
-
-    // Window Start (8 weeks back)
-    const windowStart = new Date(anchorDate);
-    windowStart.setHours(0, 0, 0, 0);
-    windowStart.setDate(windowStart.getDate() - 56);
-
-    const windowLogs = logs.filter(l => {
-      const d = parseLocalDate(l.date);
-      return d >= windowStart && d <= windowEnd;
-    });
-
-    if (!windowLogs.length && categoryLogsRaw.length === 0) return defaultReturn;
-
-    // 2. Get range of last 8 weeks buckets (Ending on the week containing anchorDate)
-    const weekBuckets = [];
-    const latestMondayStr = getMonday(anchorDate);
-    const m = parseLocalDate(latestMondayStr);
-
-    for (let i = 7; i >= 0; i--) {
-      const d = new Date(m);
-      d.setDate(d.getDate() - (i * 7));
-      const isoStr = toLocalDateStr(d);
-      weekBuckets.push({
-        iso: isoWeek(isoStr),
-        monday: isoStr,
-      });
-    }
-
-    const categoryLogs = windowLogs.filter(l => l.category === activeCategory);
+    const categoryLogs = logs.filter(l => l.category === activeCategory);
     if (!categoryLogs.length) return defaultReturn;
 
     const uniqueExercises = [...new Set(categoryLogs.map(l => l.exercise))].sort();
 
-    // Aggregate by week and exercise
-    const aggregation = {}; // { [exercise]: { [isoWeek]: value } }
+    // For each exercise, get the last 8 sessions (dates) where it was trained
+    // A "session" = one unique date
+    const exerciseSessionData = {}; // { [exercise]: [{ date, value }] }
+
     uniqueExercises.forEach(ex => {
-      aggregation[ex] = {};
-      weekBuckets.forEach(wb => aggregation[ex][wb.iso] = 0);
+      const exLogs = categoryLogs.filter(l => l.exercise === ex);
+
+      // Group by date, aggregate value per date
+      const byDate = {};
+      exLogs.forEach(log => {
+        if (!byDate[log.date]) byDate[log.date] = 0;
+        let val = 0;
+        if (viewMode === 'volume') val = volumeScore(log, bodyweightKg);
+        else if (viewMode === 'reps') val = repsValue(log);
+        else if (viewMode === 'intensity') val = Math.max(byDate[log.date] || 0, intensityScore(log, bodyweightKg));
+
+        if (viewMode === 'intensity') {
+          byDate[log.date] = Math.max(byDate[log.date] || 0, val);
+        } else {
+          byDate[log.date] += val;
+        }
+      });
+
+      // Sort dates ascending, take last 8
+      const sortedDates = Object.keys(byDate).sort();
+      const last8 = sortedDates.slice(-8);
+
+      exerciseSessionData[ex] = last8.map(date => ({
+        date,
+        value: byDate[date],
+        label: parseLocalDate(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+      }));
     });
 
-    categoryLogs.forEach(log => {
-      const week = isoWeek(log.date);
-      if (!aggregation[log.exercise]) return;
-      // Initialize week if not in bucket (edge case safety)
-      if (aggregation[log.exercise][week] === undefined) {
-        aggregation[log.exercise][week] = 0;
-      }
-      let val = 0;
-      if (viewMode === 'volume') val = volumeScore(log, bodyweightKg);
-      else if (viewMode === 'reps') val = repsValue(log);
-      else if (viewMode === 'intensity') val = intensityScore(log, bodyweightKg);
+    // Build unified x-axis from all unique dates across all exercises (last 8 overall)
+    const allDates = [...new Set(
+      Object.values(exerciseSessionData).flatMap(sessions => sessions.map(s => s.date))
+    )].sort().slice(-8);
 
-      if (viewMode === 'intensity') {
-        aggregation[log.exercise][week] = Math.max(aggregation[log.exercise][week], val);
-      } else {
-        aggregation[log.exercise][week] += val;
-      }
-    });
-
-    // Final Chart Data
-    const chartData = weekBuckets.map(wb => {
-      const row = { name: weekLabel(wb.monday), iso: wb.iso };
+    // Build chart data — one row per date, each exercise as a column
+    const chartData = allDates.map(date => {
+      const label = parseLocalDate(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      const row = { name: label, date };
       uniqueExercises.forEach(ex => {
-        row[ex] = aggregation[ex][wb.iso] || null;
+        const session = exerciseSessionData[ex]?.find(s => s.date === date);
+        row[ex] = session ? session.value : null;
       });
       return row;
-    }).filter(row => Object.values(row).some(v => typeof v === 'number' && v > 0));
+    });
 
-    // Exercises with colors and velocity
+    // Exercises with colors and velocity (use per-exercise last 8 sessions for velocity)
     const exercisesWithMeta = uniqueExercises.map((ex, idx) => {
-      const weeklyValues = weekBuckets.map(wb => aggregation[ex][wb.iso]);
+      const sessions = exerciseSessionData[ex] ?? [];
+      const weeklyValues = sessions.map(s => s.value); // reuse progressionVelocity with session values
       const velocity = progressionVelocity(weeklyValues);
-      const dataPoints = weeklyValues.filter(v => v > 0).length;
+      const dataPoints = sessions.length;
 
       return {
         name: ex,
@@ -255,43 +232,41 @@ export default function VolumeChart({ logs = [] }) {
       };
     });
 
-    // Metrics for Cards
-    // Metrics for Cards
-    const weeksWithData = weekBuckets
-      .map(wb => ({
-        iso: wb.iso,
-        total: uniqueExercises.reduce((sum, ex) => sum + (aggregation[ex][wb.iso] || 0), 0)
-      }))
-      .filter(w => w.total > 0)
-      .reverse(); // newest first
+    // Metrics update
+    // Latest session across all exercises in category
+    const allSessionDates = [...new Set(categoryLogs.map(l => l.date))].sort();
+    const latestDate = allSessionDates[allSessionDates.length - 1];
+    const previousDate = allSessionDates[allSessionDates.length - 2];
 
-    const latestWeekTotal = weeksWithData[0]?.total ?? 0;
-    const previousWeekTotal = weeksWithData[1]?.total ?? 0;
+    const totalForDate = (date) => {
+      if (!date) return 0;
+      return categoryLogs
+        .filter(l => l.date === date)
+        .reduce((sum, l) => {
+          let val = 0;
+          if (viewMode === 'volume') val = volumeScore(l, bodyweightKg);
+          else if (viewMode === 'reps') val = repsValue(l);
+          else if (viewMode === 'intensity') val = intensityScore(l, bodyweightKg);
+          return sum + val;
+        }, 0);
+    };
 
-    const currentTotal = latestWeekTotal;
-    const lastTotalEq = previousWeekTotal;
-    const delta = previousWeekTotal > 0
-      ? ((latestWeekTotal - previousWeekTotal) / previousWeekTotal) * 100
-      : null;
+    const currentTotal = totalForDate(latestDate);
+    const lastTotalEq = totalForDate(previousDate);
+    const delta = lastTotalEq > 0 ? ((currentTotal - lastTotalEq) / lastTotalEq) * 100 : null;
 
-    const currentWeekIso = weeksWithData[0]?.iso ?? weekBuckets[7].iso;
-
-    const currentWeekLogs = categoryLogs.filter(l => isoWeek(l.date) === currentWeekIso);
-
-    // Find best set exercise this week
+    // Best set: highest single log value in the latest session
     let bestSetEx = 'No exercises';
     let bestSetVal = 0;
-    currentWeekLogs.forEach(l => {
+    categoryLogs.filter(l => l.date === latestDate).forEach(l => {
       let score = 0;
       if (viewMode === 'volume') score = volumeScore(l, bodyweightKg);
       else if (viewMode === 'reps') score = repsValue(l);
       else if (viewMode === 'intensity') score = intensityScore(l, bodyweightKg);
-
-      if (score > bestSetVal) {
-        bestSetVal = score;
-        bestSetEx = l.exercise;
-      }
+      if (score > bestSetVal) { bestSetVal = score; bestSetEx = l.exercise; }
     });
+
+    const currentWeekIso = latestDate; // used for compatibility — just pass the date string
 
     const progressingCount = exercisesWithMeta.filter(ex => ex.velocity > 5).length;
 
@@ -549,7 +524,7 @@ export default function VolumeChart({ logs = [] }) {
               const trend = getVolumeTrend(metrics.currentTotal, metrics.lastTotalEq);
               const volValue = trend.statement;
               const volColor = trend.color;
-              const volSubtitle = trend.showSubtitle ? 'vs previous logged week' : '';
+              const volSubtitle = trend.showSubtitle ? 'vs previous session' : '';
 
               // 2. Best Set Chip
               const bestHasData = metrics.bestSetVal > 0;
