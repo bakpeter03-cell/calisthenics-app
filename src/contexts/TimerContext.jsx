@@ -2,9 +2,13 @@ import { createContext, useContext, useState, useEffect, useRef } from 'react';
 
 const TimerContext = createContext();
 
+const TIMER_START_KEY = 'cali_timer_start';
+const TIMER_RUNNING_KEY = 'cali_timer_running';
+
 export function TimerProvider({ children }) {
   const [targetSeconds, setTargetSeconds] = useState(150);
   const [secondsLeft, setSecondsLeft] = useState(150);
+  const [elapsed, setElapsed] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const timerRef = useRef(null);
@@ -29,65 +33,123 @@ export function TimerProvider({ children }) {
     } catch(e) {}
   };
 
-  useEffect(() => {
-    if (isRunning && secondsLeft > 0) {
-      timerRef.current = setInterval(() => {
-        setSecondsLeft(s => {
-          if (s <= 1) {
-            clearInterval(timerRef.current);
-            setIsRunning(false);
-            setIsReady(true);
-            playAlert();
-            return 0;
-          }
-          return s - 1;
-        });
-      }, 1000);
-    } else {
-      clearInterval(timerRef.current);
-    }
-    return () => clearInterval(timerRef.current);
-  }, [isRunning, secondsLeft]);
+  function getElapsed() {
+    const start = localStorage.getItem(TIMER_START_KEY);
+    if (!start) return 0;
+    return Math.floor((Date.now() - Number(start)) / 1000);
+  }
 
-  const startTimer = (secs) => {
+  useEffect(() => {
+    if (!isRunning) return;
+
+    const tick = () => {
+      const currentElapsed = getElapsed();
+      setElapsed(currentElapsed);
+      
+      const newSecondsLeft = Math.max(0, targetSeconds - currentElapsed);
+      setSecondsLeft(newSecondsLeft);
+
+      if (newSecondsLeft === 0) {
+        setIsRunning(false);
+        setIsReady(true);
+        localStorage.setItem(TIMER_RUNNING_KEY, 'false');
+        playAlert();
+      }
+    };
+
+    // Set immediately on mount/resume
+    tick();
+
+    timerRef.current = setInterval(tick, 1000);
+
+    return () => clearInterval(timerRef.current);
+  }, [isRunning, targetSeconds]);
+
+  useEffect(() => {
+    // On mount, check if timer was running before suspension
+    const wasRunning = localStorage.getItem(TIMER_RUNNING_KEY) === 'true';
+    if (wasRunning) {
+      setIsRunning(true);
+      const currentElapsed = getElapsed();
+      setElapsed(currentElapsed);
+      setSecondsLeft(Math.max(0, targetSeconds - currentElapsed));
+    }
+
+    // On visibility change (returning to app)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        const stillRunning = localStorage.getItem(TIMER_RUNNING_KEY) === 'true';
+        if (stillRunning) {
+          const currentElapsed = getElapsed();
+          setElapsed(currentElapsed);
+          setSecondsLeft(Math.max(0, targetSeconds - currentElapsed));
+          setIsRunning(true);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [targetSeconds]);
+
+  function startTimer(secs) {
+    const target = secs !== undefined ? secs : targetSeconds;
     if (secs !== undefined) {
       setTargetSeconds(secs);
-      setSecondsLeft(secs);
     }
+    const now = Date.now();
+    localStorage.setItem(TIMER_START_KEY, String(now));
+    localStorage.setItem(TIMER_RUNNING_KEY, 'true');
     setIsRunning(true);
     setIsReady(false);
-  };
+    setElapsed(0);
+    setSecondsLeft(target);
+  }
 
-  const pauseTimer = () => setIsRunning(false);
-  
-  const resumeTimer = () => {
-    if (isReady) {
-      setSecondsLeft(targetSeconds);
-      setIsReady(false);
-    }
-    setIsRunning(true);
-  };
-
-  const resetTimer = () => {
+  function stopTimer() {
+    localStorage.removeItem(TIMER_START_KEY);
+    localStorage.setItem(TIMER_RUNNING_KEY, 'false');
     setIsRunning(false);
-    setIsReady(false);
+    setElapsed(0);
     setSecondsLeft(targetSeconds);
-  };
+  }
 
-  const setPreset = (secs) => {
+  function pauseTimer() {
+    localStorage.setItem(TIMER_RUNNING_KEY, 'false');
     setIsRunning(false);
+  }
+  
+  function resumeTimer() {
+    if (isReady) {
+      startTimer(targetSeconds);
+    } else {
+      const now = Date.now();
+      localStorage.setItem(TIMER_START_KEY, String(now - elapsed * 1000));
+      localStorage.setItem(TIMER_RUNNING_KEY, 'true');
+      setIsRunning(true);
+    }
+  }
+
+  function resetTimer() {
+    stopTimer();
     setIsReady(false);
+  }
+
+  function setPreset(secs) {
+    resetTimer();
     setTargetSeconds(secs);
     setSecondsLeft(secs);
-  };
+  }
 
   return (
     <TimerContext.Provider value={{
       targetSeconds,
       secondsLeft,
+      elapsed,
       isRunning,
       isReady,
       startTimer,
+      stopTimer,
       pauseTimer,
       resumeTimer,
       resetTimer,
