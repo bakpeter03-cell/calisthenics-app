@@ -320,81 +320,103 @@ export default function Dashboard() {
             const daysTrainedThisWeek = new Set(thisWeekLogs.map(l => l.date)).size;
 
             return (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '8px',
-                marginBottom: '16px',
-              }}>
-                {/* Card 1 — Last session */}
+              <>
+                <style>{`
+                  @media (max-width: 480px) {
+                    .insight-card {
+                      padding: 10px 10px !important;
+                      min-height: 100px !important;
+                      border-radius: 12px !important;
+                    }
+                    .insight-label {
+                      font-size: 10px !important;
+                      white-space: nowrap;
+                    }
+                    .insight-value {
+                      font-size: 18px !important;
+                      line-height: 1.2;
+                    }
+                    .insight-subtitle {
+                      font-size: 10px !important;
+                    }
+                  }
+                `}</style>
                 <div style={{
-                  background: '#ffffff',
-                  border: '1px solid rgba(0, 0, 0, 0.08)',
-                  borderRadius: '16px',
-                  padding: '14px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                  minHeight: '90px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '8px',
+                  marginBottom: '16px',
                 }}>
-                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
-                    Last session
-                  </span>
-                  <span style={{ fontSize: '20px', fontWeight: 700, color: daysAgoColor }}>
-                    {daysAgoText}
-                  </span>
-                  <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                    {lastCategory}
-                  </span>
-                </div>
+                  {/* Card 1 — Last session */}
+                  <div className="insight-card" style={{
+                    background: '#ffffff',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    borderRadius: '16px',
+                    padding: '14px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    minHeight: '90px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                  }}>
+                    <span className="insight-label" style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+                      Last session
+                    </span>
+                    <span className="insight-value" style={{ fontSize: '20px', fontWeight: 700, color: daysAgoColor }}>
+                      {daysAgoText}
+                    </span>
+                    <span className="insight-subtitle" style={{ fontSize: '10px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                      {lastCategory}
+                    </span>
+                  </div>
 
-                {/* Card 2 — Category gap */}
-                <div style={{
-                  background: '#ffffff',
-                  border: '1px solid rgba(0, 0, 0, 0.08)',
-                  borderRadius: '16px',
-                  padding: '14px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                  minHeight: '90px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                }}>
-                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
-                    Needs attention
-                  </span>
-                  <span style={{ fontSize: '20px', fontWeight: 700, color: neglectedColor }}>
-                    {neglected.cat}
-                  </span>
-                  <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                    {neglected.daysAgo === 999 ? 'Never trained' : `${neglected.daysAgo} days ago`}
-                  </span>
-                </div>
+                  {/* Card 2 — Category gap */}
+                  <div className="insight-card" style={{
+                    background: '#ffffff',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    borderRadius: '16px',
+                    padding: '14px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    minHeight: '90px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                  }}>
+                    <span className="insight-label" style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+                      Attention
+                    </span>
+                    <span className="insight-value" style={{ fontSize: '20px', fontWeight: 700, color: neglectedColor }}>
+                      {neglected.cat}
+                    </span>
+                    <span className="insight-subtitle" style={{ fontSize: '10px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                      {neglected.daysAgo === 999 ? 'Never trained' : `${neglected.daysAgo} days ago`}
+                    </span>
+                  </div>
 
-                {/* Card 3 — Days trained this week */}
-                <div style={{
-                  background: '#ffffff',
-                  border: '1px solid rgba(0, 0, 0, 0.08)',
-                  borderRadius: '16px',
-                  padding: '14px 16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                  minHeight: '90px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                }}>
-                  <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
-                    This week
-                  </span>
-                  <span style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-                    {daysTrainedThisWeek} {daysTrainedThisWeek === 1 ? 'day' : 'days'}
-                  </span>
-                  <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                    trained
-                  </span>
+                  {/* Card 3 — Days trained this week */}
+                  <div className="insight-card" style={{
+                    background: '#ffffff',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    borderRadius: '16px',
+                    padding: '14px 16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    minHeight: '90px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                  }}>
+                    <span className="insight-label" style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+                      This week
+                    </span>
+                    <span className="insight-value" style={{ fontSize: '20px', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                      {daysTrainedThisWeek} {daysTrainedThisWeek === 1 ? 'day' : 'days'}
+                    </span>
+                    <span className="insight-subtitle" style={{ fontSize: '10px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                      trained
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </>
             );
           })()}
         </section>
