@@ -238,6 +238,7 @@ export function LogProvider({ children }) {
     initialLoadDone,
     user,
     bodyweight,
+    bodyweightKg: bodyweight,
     addLog,
     deleteLog,
     fetchLogs,

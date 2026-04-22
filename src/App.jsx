@@ -9,6 +9,7 @@ import AddWorkout from './pages/AddWorkout';
 import History from './pages/History';
 import Profile from './pages/Profile';
 import Auth from './components/Auth';
+import Chat from './pages/Chat';
 
 function AppContent() {
   const { user, initialLoadDone } = useWorkoutLogs();
@@ -35,11 +36,7 @@ function AppContent() {
           <Route path="/add" element={<AddWorkout />} />
           <Route path="/history" element={<History />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/chat" element={
-            <div className="flex items-center justify-center h-64 text-on-surface-variant font-bold">
-              AI Chat Assistant Coming Soon
-            </div>
-          } />
+          <Route path="/chat" element={<Chat />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
