@@ -425,7 +425,7 @@ export default function VolumeChart({ logs = [] }) {
         padding: '4px',
         backgroundColor: '#E8E8E8',
         borderRadius: '16px',
-        width: 'fit-content',
+        width: '100%',
         overflowX: 'auto',
         WebkitOverflowScrolling: 'touch',
         scrollbarWidth: 'none',
@@ -435,7 +435,7 @@ export default function VolumeChart({ logs = [] }) {
             key={cat}
             onClick={() => { setActiveCategory(cat); setHiddenExercises(new Set()); }}
             style={{
-              flexShrink: 0,
+              flex: 1,
               padding: '8px 20px',
               borderRadius: '12px',
               fontSize: '12px',
