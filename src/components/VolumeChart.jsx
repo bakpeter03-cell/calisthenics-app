@@ -426,9 +426,6 @@ export default function VolumeChart({ logs = [] }) {
         backgroundColor: '#E8E8E8',
         borderRadius: '16px',
         width: '100%',
-        overflowX: 'auto',
-        WebkitOverflowScrolling: 'touch',
-        scrollbarWidth: 'none',
       }}>
         {['Push', 'Pull', 'Legs', 'Core'].map(cat => (
           <button
@@ -519,7 +516,7 @@ export default function VolumeChart({ logs = [] }) {
               };
 
               // 1. Volume/Reps Chip
-              const volLabel = viewMode === 'volume' ? 'Weekly volume' : (viewMode === 'reps' ? 'Weekly reps' : 'Peak intensity');
+              const volLabel = viewMode === 'volume' ? 'Volume' : (viewMode === 'reps' ? 'Reps' : 'Peak intensity');
               const volHasData = metrics.currentTotal > 0 && metrics.lastTotalEq > 0;
               const trend = getVolumeTrend(metrics.currentTotal, metrics.lastTotalEq);
               const volValue = trend.statement;

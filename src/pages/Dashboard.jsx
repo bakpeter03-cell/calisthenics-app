@@ -187,12 +187,27 @@ export default function Dashboard() {
   // Personal Bests
   const pbs = useMemo(() => {
     return ['Muscle-up', 'Front Lever', 'Handstand', 'L-sit'].map(name => {
-      const exLogs = normalizedLogs.filter(l => (getExerciseMeta(l.exercise).pbTarget || l.exercise).toLowerCase() === name.toLowerCase());
-      if (!exLogs.length) return { name, val: 0, hasData: false, unit: EXERCISE_MAP[name]?.isHold ? 's' : 'reps' };
-      const max = Math.max(...exLogs.map(l => EXERCISE_MAP[l.exercise]?.isHold ? (l.hold_seconds || 0) : (l.reps || 0)));
-      return { name, val: max > 0 ? max : 0, hasData: max > 0, unit: EXERCISE_MAP[name]?.isHold ? 's' : 'reps' };
+      const isHold = EXERCISE_MAP[name]?.isHold ?? false;
+
+      // Only match logs where the exercise name exactly matches
+      const exLogs = logs.filter(l =>
+        l.exercise.toLowerCase() === name.toLowerCase()
+      );
+
+      if (!exLogs.length) return { name, val: 0, hasData: false, unit: isHold ? 's' : 'reps' };
+
+      const max = Math.max(...exLogs.map(l =>
+        isHold ? (l.hold_seconds || 0) : (l.reps || 0)
+      ));
+
+      return {
+        name,
+        val: max > 0 ? max : 0,
+        hasData: max > 0,
+        unit: isHold ? 's' : 'reps'
+      };
     });
-  }, [normalizedLogs]);
+  }, [logs]);
 
   // Skill Progression
   const { skillChartData, allTimeBest, maxSession } = useMemo(() => {
@@ -469,7 +484,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div style={{ width: '100%', marginBottom: '40px' }}>
+          <div style={{ width: '100%', marginBottom: '8px' }}>
             {/* Day Labels */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '8px' }}>
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
@@ -716,36 +731,6 @@ export default function Dashboard() {
                 })}
               </div>
             </div>
-
-            {/* Last workout */}
-            {lastWorkoutDetails && (
-              <>
-                <style>{`
-                    .last-workout-row {
-                      display: flex;
-                      flex-direction: column;
-                      gap: 6px;
-                      margin-top: 4px;
-                    }
-                    .last-workout-label {
-                      font-size: 12px;
-                      color: var(--color-text-secondary);
-                      font-weight: 500;
-                    }
-                    .last-workout-value {
-                      font-size: 13px;
-                      color: var(--color-text-primary, #191c1e);
-                      font-weight: 600;
-                    }
-                  `}</style>
-                <div className="last-workout-row">
-                  <span className="last-workout-label">Last workout</span>
-                  <span className="last-workout-value">
-                    {lastWorkoutDetails.date} · {lastWorkoutDetails.category} · {lastWorkoutDetails.sets} {lastWorkoutDetails.sets === 1 ? 'set' : 'sets'}
-                  </span>
-                </div>
-              </>
-            )}
           </div>
         </section>
 
