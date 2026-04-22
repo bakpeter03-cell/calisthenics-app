@@ -426,6 +426,8 @@ export default function VolumeChart({ logs = [] }) {
         backgroundColor: '#E8E8E8',
         borderRadius: '16px',
         width: '100%',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
       }}>
         {['Push', 'Pull', 'Legs', 'Core'].map(cat => (
           <button
@@ -433,17 +435,20 @@ export default function VolumeChart({ logs = [] }) {
             onClick={() => { setActiveCategory(cat); setHiddenExercises(new Set()); }}
             style={{
               flex: 1,
-              padding: '8px 20px',
+              minWidth: 0,
+              boxSizing: 'border-box',
+              padding: '8px 4px',
               borderRadius: '12px',
-              fontSize: '12px',
+              fontSize: '11px',
               fontWeight: 700,
               textTransform: 'uppercase',
-              letterSpacing: '0.05em',
+              letterSpacing: '0.04em',
+              border: activeCategory === cat ? '2px solid #016c48' : '2px solid transparent',
               cursor: 'pointer',
               background: activeCategory === cat ? '#016c48' : 'transparent',
               color: activeCategory === cat ? '#ffffff' : '#444444',
-              border: activeCategory === cat ? '2px solid #016c48' : '2px solid transparent',
               transition: 'all 0.15s',
+              whiteSpace: 'nowrap',
             }}
           >
             {cat}
