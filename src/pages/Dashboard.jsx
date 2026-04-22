@@ -485,15 +485,17 @@ export default function Dashboard() {
                 const todayDay = new Date().getDate();
                 const isToday = isCurrentMonth && d.label === todayDay;
                 const isTrained = d.hasWorkout;
+                const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(d.label).padStart(2, '0')}`;
+                const isSelected = selectedDay === dateStr;
 
                 // Background priority: today > trained > untrained
-                const cellBackground = isToday
+                const cellBackground = isSelected ? '#ffffff' : isToday
                   ? 'rgba(1, 108, 72, 0.2)' // light green tint
                   : isTrained
                     ? '#016c48' // primary green
                     : '#E8E8E8'; // inactive gray
 
-                const cellTextColor = (isToday && !isTrained)
+                const cellTextColor = isSelected ? '#016c48' : (isToday && !isTrained)
                   ? '#016c48' // green text on tint
                   : isTrained
                     ? '#ffffff'
@@ -505,12 +507,11 @@ export default function Dashboard() {
                     title={d.date}
                     onClick={() => {
                       if (!isTrained) return;
-                      const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(d.label).padStart(2, '0')}`;
                       setSelectedDay(prev => prev === dateStr ? null : dateStr);
                     }}
                     style={{
                       cursor: isTrained ? 'pointer' : 'default',
-                      backgroundColor: cellBackground,
+                      background: cellBackground,
                       color: cellTextColor,
                       aspectRatio: '1',
                       borderRadius: '8px',
@@ -521,7 +522,8 @@ export default function Dashboard() {
                       fontWeight: 500,
                       transition: 'all 0.2s',
                       transform: (isTrained && !isToday) ? 'scale(1.05)' : 'none',
-                      boxShadow: (isTrained && !isToday) ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none'
+                      boxShadow: (isTrained && !isToday) ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
+                      border: isSelected ? '1.5px solid #016c48' : 'none'
                     }}
                   >
                     {d.label}
@@ -535,10 +537,26 @@ export default function Dashboard() {
               if (dayLogs.length === 0) return null;
 
               const categories = [...new Set(dayLogs.map(l => l.category))].join(' + ');
-              const exercises = [...new Set(dayLogs.map(l => l.exercise))];
+              const totalSets = dayLogs.length;
+
+              // Group all sets by exercise name — merge regardless of order
+              const exerciseMap = {};
+              const exerciseOrder = [];
+              dayLogs.forEach(log => {
+                if (!exerciseMap[log.exercise]) {
+                  exerciseMap[log.exercise] = [];
+                  exerciseOrder.push(log.exercise);
+                }
+                exerciseMap[log.exercise].push(log);
+              });
+
+              const blocks = exerciseOrder.map(ex => ({
+                exercise: ex,
+                sets: exerciseMap[ex],
+              }));
 
               const formattedDate = new Date(
-                ...selectedDay.split('-').map((v, idx) => idx === 1 ? Number(v) - 1 : Number(v))
+                ...selectedDay.split('-').map((v, i) => i === 1 ? Number(v) - 1 : Number(v))
               ).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
 
               return (
@@ -556,19 +574,21 @@ export default function Dashboard() {
                     {categories}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                    {exercises.map((ex, idx) => {
-                      const exLogs = dayLogs.filter(l => l.exercise === ex);
-                      const sets = exLogs.length;
+                    {blocks.map((block, i) => {
+                      const setCount = block.sets.length;
+                      const details = `${setCount} ${setCount === 1 ? 'set' : 'sets'}`;
+
                       return (
-                        <div key={ex} style={{
+                        <div key={i} style={{
                           display: 'flex',
                           justifyContent: 'space-between',
+                          alignItems: 'center',
                           padding: '6px 0',
-                          borderTop: idx > 0 ? '0.5px solid var(--color-border-tertiary)' : 'none',
+                          borderTop: i > 0 ? '0.5px solid var(--color-border-tertiary)' : 'none',
                           fontSize: '13px',
                         }}>
-                          <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{ex}</span>
-                          <span style={{ color: 'var(--color-text-secondary)' }}>{sets} {sets === 1 ? 'set' : 'sets'}</span>
+                          <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>{block.exercise}</span>
+                          <span style={{ color: 'var(--color-text-secondary)' }}>{details}</span>
                         </div>
                       );
                     })}
@@ -578,7 +598,7 @@ export default function Dashboard() {
             })()}
           </div>
 
-          <div className="space-y-4 pt-6 border-t border-outline-variant/5">
+          <div className="space-y-4 pt-6">
             <style>{`
                 .freq-row {
                   display: flex;
@@ -599,23 +619,8 @@ export default function Dashboard() {
                 }
                 .freq-badge {
                   flex: 1;
-                  text-align: center;
-                  padding: 5px 0;
-                  border-radius: 20px;
-                  font-size: 12px;
-                  font-weight: 600;
-                  border: 1px solid var(--color-border-secondary, #e0e3e5);
-                  white-space: nowrap;
-                }
-                .freq-badge.active {
-                  background: #016c48;
-                  color: #ffffff;
-                  border-color: #016c48;
-                }
-                .freq-badge.inactive {
-                  background: #E8E8E8;
-                  color: rgba(0,0,0,0.4);
-                  border: none;
+                  display: flex;
+                  justify-content: center;
                 }
               `}</style>
 
@@ -623,30 +628,92 @@ export default function Dashboard() {
             {isCurrentMonth && (
               <div className="freq-row">
                 <span className="freq-label">This week</span>
-                <div className="freq-badges">
-                  {categoriesList.map(cat => (
-                    <div
-                      key={cat}
-                      className={`freq-badge ${thisWeekFreq[cat] > 0 ? 'active' : 'inactive'}`}
-                    >
-                      {cat} {thisWeekFreq[cat]}
-                    </div>
-                  ))}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: '6px',
+                }}>
+                  {categoriesList.map(cat => {
+                    const count = thisWeekFreq[cat] || 0;
+                    const active = count > 0;
+                    return (
+                      <div key={cat} style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '10px 4px',
+                        borderRadius: '12px',
+                        background: active ? '#016c48' : '#E8E8E8',
+                        gap: '2px',
+                      }}>
+                        <span style={{
+                          fontSize: '20px',
+                          fontWeight: 700,
+                          color: active ? '#ffffff' : '#999999',
+                          lineHeight: 1,
+                        }}>
+                          {count}
+                        </span>
+                        <span style={{
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          color: active ? 'rgba(255,255,255,0.75)' : '#999999',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                          lineHeight: 1,
+                        }}>
+                          {cat}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
             <div className="freq-row">
               <span className="freq-label">Monthly workouts</span>
-              <div className="freq-badges">
-                {categoriesList.map(cat => (
-                  <div
-                    key={cat}
-                    className={`freq-badge ${monthlyWorkouts[cat] > 0 ? 'active' : 'inactive'}`}
-                  >
-                    {cat} {monthlyWorkouts[cat]}
-                  </div>
-                ))}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '6px',
+              }}>
+                {categoriesList.map(cat => {
+                  const count = monthlyWorkouts[cat] || 0;
+                  const active = count > 0;
+                  return (
+                    <div key={cat} style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '10px 4px',
+                      borderRadius: '12px',
+                      background: active ? '#016c48' : '#E8E8E8',
+                      gap: '2px',
+                    }}>
+                      <span style={{
+                        fontSize: '20px',
+                        fontWeight: 700,
+                        color: active ? '#ffffff' : '#999999',
+                        lineHeight: 1,
+                      }}>
+                        {count}
+                      </span>
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        color: active ? 'rgba(255,255,255,0.75)' : '#999999',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        lineHeight: 1,
+                      }}>
+                        {cat}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
