@@ -103,7 +103,11 @@ export default function Chat() {
       if (data.reply) {
         setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
       } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Try again.' }])
+        // Temporarily show full error for debugging
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `Error: ${data.error} — ${data.details || 'no details'}`
+        }])
       }
     } catch (err) {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Could not reach the server. Check your connection.' }])
