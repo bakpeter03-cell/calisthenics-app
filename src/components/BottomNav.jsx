@@ -30,7 +30,7 @@ export default function BottomNav() {
   const path = location.pathname;
 
   return (
-    <nav className="fixed bottom-0 w-full z-50 pb-safe border-t border-outline-variant/20 shadow-[0_-12px_32px_rgba(25,28,30,0.06)]" style={{ background: '#ffffff' }}>
+    <nav className="fixed bottom-0 w-full z-50 pb-safe bg-surface-container-lowest/80 backdrop-blur-md border-t border-outline-variant/20 shadow-[0_-12px_32px_rgba(25,28,30,0.06)]">
       <div className="max-w-2xl mx-auto h-20 flex justify-around items-center px-4">
         <NavItem to="/add" icon="sports_gymnastics" label="Workout" path={path} />
         <NavItem to="/" icon="leaderboard" label="Analytics" path={path} />
