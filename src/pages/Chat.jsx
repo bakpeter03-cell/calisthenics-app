@@ -189,55 +189,89 @@ export default function Chat() {
         bottom: 0,
         left: 0,
         right: 0,
-        padding: '12px 16px',
-        borderTop: '1px solid rgba(0,0,0,0.06)',
+        padding: '10px 16px 14px',
         background: '#ffffff',
+        borderTop: '1px solid rgba(0,0,0,0.06)',
         display: 'flex',
+        alignItems: 'center',
         gap: '8px',
-        alignItems: 'flex-end',
       }}>
-        <textarea
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask your coach..."
-          rows={1}
+
+        {/* Plus / attachment button */}
+        <button
           style={{
-            flex: 1,
-            padding: '10px 14px',
-            borderRadius: '20px',
-            border: '1px solid rgba(0,0,0,0.12)',
-            fontSize: '14px',
-            resize: 'none',
-            outline: 'none',
-            fontFamily: 'inherit',
-            lineHeight: '1.4',
-            maxHeight: '120px',
-            overflowY: 'auto',
-            background: '#f8f8f8',
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            border: '1.5px solid rgba(0,0,0,0.15)',
+            background: 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            flexShrink: 0,
+            color: 'var(--color-text-secondary)',
           }}
-        />
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+        </button>
+
+        {/* Text input */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          background: '#f2f2f2',
+          borderRadius: '22px',
+          padding: '8px 14px',
+        }}>
+          <textarea
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Message Coach..."
+            rows={1}
+            style={{
+              flex: 1,
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              fontSize: '15px',
+              fontFamily: 'inherit',
+              lineHeight: '1.4',
+              resize: 'none',
+              maxHeight: '100px',
+              overflowY: 'auto',
+              color: 'var(--color-text-primary)',
+            }}
+          />
+        </div>
+
+        {/* Send button */}
         <button
           onClick={sendMessage}
           disabled={!input.trim() || loading}
           style={{
-            background: input.trim() && !loading ? '#016c48' : '#E8E8E8',
-            color: input.trim() && !loading ? '#ffffff' : '#999999',
-            border: 'none',
+            width: '36px',
+            height: '36px',
             borderRadius: '50%',
-            width: '40px',
-            height: '40px',
-            cursor: input.trim() && !loading ? 'pointer' : 'default',
+            border: 'none',
+            background: input.trim() && !loading ? '#016c48' : '#E8E8E8',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '18px',
+            cursor: input.trim() && !loading ? 'pointer' : 'default',
             flexShrink: 0,
-            transition: 'all 0.15s',
+            transition: 'background 0.15s',
           }}
         >
-          ↑
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 12V4M4 8l4-4 4 4" stroke={input.trim() && !loading ? '#ffffff' : '#999999'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </button>
+
       </div>
 
     </div>
