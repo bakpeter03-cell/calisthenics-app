@@ -43,15 +43,30 @@ function AppContent() {
     <BrowserRouter>
       <ScrollToTop />
       <TopNav />
-      <main className="pt-20 px-4 md:px-8 max-w-2xl mx-auto space-y-8 pb-32">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/add" element={<AddWorkout />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+      <main style={{
+        position: 'fixed',
+        top: '64px',          // height of TopNav
+        bottom: '80px',       // height of BottomNav
+        left: 0,
+        right: 0,
+        overflowY: 'auto',
+        overscrollBehavior: 'none',
+        WebkitOverflowScrolling: 'auto',
+      }}>
+        <div style={{
+          maxWidth: '672px',   // max-w-2xl equivalent
+          margin: '0 auto',
+          padding: '0 16px',
+        }}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/add" element={<AddWorkout />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
       </main>
       <BottomNav />
     </BrowserRouter>

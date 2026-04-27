@@ -128,7 +128,7 @@ export default function Chat() {
       display: 'flex',
       flexDirection: 'column',
       minHeight: '100%',
-      padding: '0',
+      paddingBottom: '80px',
     }}>
 
       {/* Header */}
