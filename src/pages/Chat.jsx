@@ -124,36 +124,28 @@ export default function Chat() {
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',          // fill whatever space the parent gives
-      overflow: 'hidden',      // prevent the container itself from scrolling
-      maxWidth: '720px',
-      margin: '0 auto',
-    }}>
+    <div style={{ position: 'relative', height: '100%' }}>
 
-      {/* Header */}
+      {/* Scrollable message area — padded at bottom to clear the input bar */}
       <div style={{
-        padding: '20px 20px 12px',
-        borderBottom: '1px solid rgba(0,0,0,0.06)',
-        flexShrink: 0,          // never shrink the header
-      }}>
-        <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Coach</h2>
-        <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
-          Powered by Gemini · knows your training history
-        </p>
-      </div>
-
-      {/* Messages */}
-      <div style={{
-        flex: 1,
         overflowY: 'auto',
-        padding: '16px 20px',
+        padding: '16px 20px 100px 20px', // 100px bottom padding clears the fixed input
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
+        height: '100%',
+        boxSizing: 'border-box',
       }}>
+
+        {/* Header inside scroll area */}
+        <div style={{ marginBottom: '8px' }}>
+          <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Coach</h2>
+          <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
+            Powered by Gemini · knows your training history
+          </p>
+        </div>
+
+        {/* Messages */}
         {messages.map((msg, i) => (
           <div key={i} style={{
             display: 'flex',
@@ -191,9 +183,12 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
+      {/* Input bar — fixed to bottom of the chat container */}
       <div style={{
-        flexShrink: 0,          // never shrink the input bar
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
         padding: '12px 16px',
         borderTop: '1px solid rgba(0,0,0,0.06)',
         background: '#ffffff',
@@ -219,6 +214,7 @@ export default function Chat() {
             lineHeight: '1.4',
             maxHeight: '120px',
             overflowY: 'auto',
+            background: '#f8f8f8',
           }}
         />
         <button
@@ -243,6 +239,7 @@ export default function Chat() {
           ↑
         </button>
       </div>
+
     </div>
   )
 }
