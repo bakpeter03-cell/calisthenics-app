@@ -127,17 +127,17 @@ export default function Chat() {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      height: 'calc(100dvh - 65px)',  // subtract bottom nav bar height
+      height: '100%',          // fill whatever space the parent gives
+      overflow: 'hidden',      // prevent the container itself from scrolling
       maxWidth: '720px',
       margin: '0 auto',
-      position: 'relative',
-      overflow: 'hidden',
     }}>
 
       {/* Header */}
       <div style={{
         padding: '20px 20px 12px',
         borderBottom: '1px solid rgba(0,0,0,0.06)',
+        flexShrink: 0,          // never shrink the header
       }}>
         <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Coach</h2>
         <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
@@ -153,7 +153,6 @@ export default function Chat() {
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
-        paddingBottom: '80px',   // prevent last message from hiding behind input bar
       }}>
         {messages.map((msg, i) => (
           <div key={i} style={{
@@ -194,10 +193,7 @@ export default function Chat() {
 
       {/* Input */}
       <div style={{
-        position: 'sticky',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        flexShrink: 0,          // never shrink the input bar
         padding: '12px 16px',
         borderTop: '1px solid rgba(0,0,0,0.06)',
         background: '#ffffff',
