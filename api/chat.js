@@ -24,19 +24,25 @@ ${trainingContext}
 Use this data to give personalized advice when relevant. If the user asks a general question, answer it generally. Keep responses concise and practical — no more than 3-4 paragraphs unless detail is specifically needed.`
 
   // Build Gemini conversation format
-  const geminiMessages = messages.map(m => ({
+  let geminiMessages = messages.map(m => ({
     role: m.role === 'assistant' ? 'model' : 'user',
     parts: [{ text: m.content }]
   }))
 
+  // The Gemini API requires the conversation history to start with a 'user' message.
+  // We need to strip out the initial 'assistant' greeting.
+  if (geminiMessages.length > 0 && geminiMessages[0].role === 'model') {
+    geminiMessages.shift()
+  }
+
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          system_instruction: {
+          systemInstruction: {
             parts: [{ text: systemPrompt }]
           },
           contents: geminiMessages,
