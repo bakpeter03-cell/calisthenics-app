@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { TimerProvider } from './contexts/TimerContext';
 import { LogProvider } from './contexts/LogContext';
 import { useWorkoutLogs } from './hooks/useWorkoutLogs';
@@ -10,6 +11,17 @@ import History from './pages/History';
 import Profile from './pages/Profile';
 import Auth from './components/Auth';
 import Chat from './pages/Chat';
+
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  
+  useEffect(() => {
+    // Instantly reset scroll without animation — prevents iOS chrome flash
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }, [pathname])
+  
+  return null
+}
 
 function AppContent() {
   const { user, initialLoadDone } = useWorkoutLogs();
@@ -29,6 +41,7 @@ function AppContent() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <TopNav />
       <main className="pt-20 px-4 md:px-8 max-w-2xl mx-auto space-y-8 pb-32">
         <Routes>

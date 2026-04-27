@@ -1,7 +1,9 @@
 /* Custom Global Overrides */
 /* Tailwind is loaded via CDN in index.html, no need to import here */
-html {
+html, body {
   overflow-y: scroll;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
 }
 
 /* Hide scrollbar — all browsers including iOS Safari */
