@@ -145,6 +145,18 @@ export default function AddWorkout() {
 
   return (
     <div className="space-y-8">
+      <style>{`
+        @keyframes buttonPop {
+          0% { transform: scale(1); }
+          40% { transform: scale(0.94); }
+          100% { transform: scale(1); }
+        }
+
+        .btn-pop:active {
+          animation: buttonPop 0.15s ease;
+          opacity: 0.85;
+        }
+      `}</style>
       {/* Smart Countdown Timer */}
       <PulseTimer
         onPresetChange={(secs) => {
@@ -255,13 +267,14 @@ export default function AddWorkout() {
 
         <div className="flex gap-2 w-full pt-2">
           {targetLogs.length > 0 && (
-            <Button className="flex-1 shadow-md bg-surface border border-outline-variant/30 text-on-surface-variant hover:text-primary transition-colors hover:border-primary/50" variant="secondary" onClick={handleDuplicateLast}>
+            <Button className="flex-1 shadow-md bg-surface border border-outline-variant/30 text-on-surface-variant hover:text-primary transition-colors hover:border-primary/50 btn-pop" variant="secondary" onClick={handleDuplicateLast}>
               <span className="material-symbols-outlined text-[18px] mr-1">content_copy</span>
               Duplicate
             </Button>
           )}
           <button 
             onClick={handleSave}
+            className="btn-pop"
             style={{ 
               flex: 2, 
               background: '#016c48', 
