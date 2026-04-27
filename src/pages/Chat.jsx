@@ -73,7 +73,7 @@ export default function Chat() {
   const bottomRef = useRef(null)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [messages])
 
   const sendMessage = async () => {
@@ -124,28 +124,32 @@ export default function Chat() {
   }
 
   return (
-    <div style={{ position: 'relative', height: '100%' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100%',
+      padding: '0',
+    }}>
 
-      {/* Scrollable message area — padded at bottom to clear the input bar */}
+      {/* Header */}
       <div style={{
-        overflowY: 'auto',
-        padding: '16px 20px 100px 20px', // 100px bottom padding clears the fixed input
+        padding: '20px 20px 12px',
+        borderBottom: '1px solid rgba(0,0,0,0.06)',
+      }}>
+        <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Coach</h2>
+        <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
+          Knows your training history
+        </p>
+      </div>
+
+      {/* Messages — natural flow, no scroll container */}
+      <div style={{
+        flex: 1,
+        padding: '16px 20px',
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
-        height: '100%',
-        boxSizing: 'border-box',
       }}>
-
-        {/* Header inside scroll area */}
-        <div style={{ marginBottom: '8px' }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Coach</h2>
-          <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '2px 0 0' }}>
-            Powered by Gemini · knows your training history
-          </p>
-        </div>
-
-        {/* Messages */}
         {messages.map((msg, i) => (
           <div key={i} style={{
             display: 'flex',
@@ -154,7 +158,9 @@ export default function Chat() {
             <div style={{
               maxWidth: '80%',
               padding: '10px 14px',
-              borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+              borderRadius: msg.role === 'user'
+                ? '18px 18px 4px 18px'
+                : '18px 18px 18px 4px',
               background: msg.role === 'user' ? '#016c48' : '#f1f1f1',
               color: msg.role === 'user' ? '#ffffff' : 'var(--color-text-primary)',
               fontSize: '14px',
@@ -183,42 +189,38 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input bar — fixed to bottom of the chat container */}
+      {/* Input bar — normal flow, always below messages */}
       <div style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
         padding: '10px 16px 14px',
         background: '#ffffff',
         borderTop: '1px solid rgba(0,0,0,0.06)',
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
+        position: 'sticky',
+        bottom: 0,          // sticks to bottom of scroll container when scrolling
       }}>
 
-        {/* Plus / attachment button */}
-        <button
-          style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '50%',
-            border: '1.5px solid rgba(0,0,0,0.15)',
-            background: 'transparent',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            flexShrink: 0,
-            color: 'var(--color-text-secondary)',
-          }}
-        >
+        {/* Plus button */}
+        <button style={{
+          width: '36px',
+          height: '36px',
+          borderRadius: '50%',
+          border: '1.5px solid rgba(0,0,0,0.15)',
+          background: 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          flexShrink: 0,
+          color: 'var(--color-text-secondary)',
+        }}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
           </svg>
         </button>
 
-        {/* Text input */}
+        {/* Input */}
         <div style={{
           flex: 1,
           display: 'flex',
@@ -268,10 +270,11 @@ export default function Chat() {
           }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 12V4M4 8l4-4 4 4" stroke={input.trim() && !loading ? '#ffffff' : '#999999'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M8 12V4M4 8l4-4 4 4"
+              stroke={input.trim() && !loading ? '#ffffff' : '#999999'}
+              strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
-
       </div>
 
     </div>
