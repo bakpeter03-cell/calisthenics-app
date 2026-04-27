@@ -11,7 +11,7 @@ export function Input({ label, error, className = "", containerClassName = "", o
           <button
             type="button"
             onClick={onDecrement}
-            className="absolute left-1 w-9 h-9 flex items-center justify-center bg-surface-container-high hover:bg-surface-variant rounded-lg font-black text-on-surface-variant hover:text-primary z-10"
+            className="absolute left-1 w-9 h-9 flex items-center justify-center bg-surface-container-high hover:bg-surface-variant rounded-lg font-black text-on-surface-variant hover:text-primary z-10 btn-pop"
           >
             -
           </button>
@@ -24,7 +24,7 @@ export function Input({ label, error, className = "", containerClassName = "", o
           <button
             type="button"
             onClick={onIncrement}
-            className="absolute right-1 w-9 h-9 flex items-center justify-center bg-surface-container-high hover:bg-surface-variant rounded-lg font-black text-on-surface-variant hover:text-primary z-10"
+            className="absolute right-1 w-9 h-9 flex items-center justify-center bg-surface-container-high hover:bg-surface-variant rounded-lg font-black text-on-surface-variant hover:text-primary z-10 btn-pop"
           >
             +
           </button>

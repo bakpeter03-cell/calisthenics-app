@@ -127,10 +127,10 @@ export default function Chat() {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      height: '100%',
+      height: '100dvh',        // dynamic viewport height — accounts for mobile keyboard
       maxWidth: '720px',
       margin: '0 auto',
-      padding: '0',
+      position: 'relative',
     }}>
 
       {/* Header */}
@@ -152,6 +152,7 @@ export default function Chat() {
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
+        paddingBottom: '80px',   // prevent last message from hiding behind input bar
       }}>
         {messages.map((msg, i) => (
           <div key={i} style={{
@@ -192,8 +193,13 @@ export default function Chat() {
 
       {/* Input */}
       <div style={{
+        position: 'sticky',
+        bottom: 0,
+        left: 0,
+        right: 0,
         padding: '12px 16px',
         borderTop: '1px solid rgba(0,0,0,0.06)',
+        background: '#ffffff',
         display: 'flex',
         gap: '8px',
         alignItems: 'flex-end',
