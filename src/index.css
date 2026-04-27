@@ -17,3 +17,10 @@ body::-webkit-scrollbar,
   width: 0 !important;
   height: 0 !important;
 }
+
+textarea:focus,
+textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}

@@ -231,6 +231,7 @@ export default function Chat() {
           background: '#f2f2f2',
           borderRadius: '22px',
           padding: '8px 14px',
+          outline: 'none',
         }}>
           <textarea
             value={input}
