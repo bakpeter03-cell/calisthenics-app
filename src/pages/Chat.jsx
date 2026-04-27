@@ -127,10 +127,11 @@ export default function Chat() {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      height: '100dvh',        // dynamic viewport height — accounts for mobile keyboard
+      height: 'calc(100dvh - 65px)',  // subtract bottom nav bar height
       maxWidth: '720px',
       margin: '0 auto',
       position: 'relative',
+      overflow: 'hidden',
     }}>
 
       {/* Header */}
