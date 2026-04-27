@@ -145,7 +145,7 @@ export default function Chat() {
       {/* Messages — natural flow, no scroll container */}
       <div style={{
         flex: 1,
-        padding: '16px 20px',
+        padding: '16px 20px 120px 20px',  // 120px bottom = input bar + nav bar + breathing room
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
@@ -191,14 +191,17 @@ export default function Chat() {
 
       {/* Input bar — normal flow, always below messages */}
       <div style={{
-        padding: '10px 16px 14px',
+        position: 'fixed',
+        bottom: 80,          // height of the bottom nav bar — adjust if nav is different height
+        left: 0,
+        right: 0,
+        padding: '10px 16px 10px',
         background: '#ffffff',
         borderTop: '1px solid rgba(0,0,0,0.06)',
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
-        position: 'sticky',
-        bottom: 0,          // sticks to bottom of scroll container when scrolling
+        zIndex: 100,
       }}>
 
         {/* Plus button */}
