@@ -8,7 +8,7 @@ import { useTimer } from '../contexts/TimerContext';
 import { getExerciseMeta } from '../utils/exerciseMap';
 
 const EXERCISES = {
-  Push: ['Push-up', 'Decline Push-up', 'Incline Push-up', 'Dip', 'Straight Bar Dip', 'Pike Push-up', 'Elevated Pike Pushup', 'Handstand Push-up', 'Archer Push-up'],
+  Push: ['Push-up', 'Decline Push-up', 'Incline Push-up', 'Dip', 'Straight Bar Dip', 'Skullcrusher', 'Pike Push-up', 'Elevated Pike Pushup', 'Handstand Push-up', 'Archer Push-up'],
   Pull: ['Pull-up', 'Chin-up', 'L-sit pull-up', 'Row', 'Tucked Front Lever Raise', 'Advanced Tucked Front Lever Raise', 'One-leg Front Lever Raise', 'Front Lever Raise'],
   Legs: ['Bulgarian Split Squat', 'Reverse Nordics', 'Nordic Negatives', 'Single-leg RDL', 'Deficit Calf Raise'],
   Core: ['Knee Raise', 'Toes-to-bar', 'Dragon Flag', 'L-sit'],
@@ -272,18 +272,18 @@ export default function AddWorkout() {
               Duplicate
             </Button>
           )}
-          <button 
+          <button
             onClick={handleSave}
             className="btn-pop"
-            style={{ 
-              flex: 2, 
-              background: '#016c48', 
-              color: '#ffffff', 
-              border: 'none', 
-              borderRadius: '12px', 
-              fontWeight: 900, 
-              textTransform: 'uppercase', 
-              letterSpacing: '0.05em', 
+            style={{
+              flex: 2,
+              background: '#016c48',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '12px',
+              fontWeight: 900,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
               fontSize: '14px',
               padding: '12px',
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
