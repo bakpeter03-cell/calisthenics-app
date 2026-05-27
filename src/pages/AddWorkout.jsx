@@ -10,7 +10,7 @@ import { getExerciseMeta } from '../utils/exerciseMap';
 const EXERCISES = {
   Push: ['Push-up', 'Decline Push-up', 'Incline Push-up', 'Dip', 'Straight Bar Dip', 'Skullcrusher', 'Pike Push-up', 'Elevated Pike Pushup', 'Handstand Push-up', 'Archer Push-up'],
   Pull: ['Pull-up', 'Chin-up', 'L-sit pull-up', 'Row', 'Archer Row', 'Tucked Front Lever Raise', 'Advanced Tucked Front Lever Raise', 'One-leg Front Lever Raise', 'Front Lever Raise'],
-  Legs: ['Bulgarian Split Squat', 'Reverse Nordics', 'Nordic Negatives', 'Single-leg RDL', 'Deficit Calf Raise'],
+  Legs: ['Bulgarian Split Squat', 'Pistol Squat', 'Sissy Squat', 'Cossack Squat', 'Nordic Negatives', 'Single-leg RDL', 'Deficit Calf Raise'],
   Core: ['Knee Raise', 'Toes-to-bar', 'Dragon Flag', 'L-sit'],
   Skills: ['Muscle-up', 'Handstand', 'Front Lever', 'L-sit']
 };
